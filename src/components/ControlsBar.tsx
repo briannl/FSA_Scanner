@@ -1,17 +1,27 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Retailer } from "../types/product";
-import { Search, X, SlidersHorizontal } from "lucide-react";
+import {
+  Search,
+  X,
+  LayoutGrid,
+  Table as TableIcon
+} from "lucide-react";
 
 interface ControlsBarProps {
   searchText: string;
   onSearchChange: (val: string) => void;
   selectedRetailer: "All" | Retailer;
   onRetailerChange: (val: "All" | Retailer) => void;
+  retailerCounts: { all: number; cvs: number; costco: number };
   selectedCategory: string;
   onCategoryChange: (val: string) => void;
   categories: string[];
   discountedOnly: boolean;
   onDiscountedOnlyChange: (val: boolean) => void;
+  priceDropsOnly: boolean;
+  onPriceDropsOnlyChange: (val: boolean) => void;
+  viewMode: "table" | "card";
+  onViewModeChange: (mode: "table" | "card") => void;
   matchedCount: number;
 }
 
@@ -20,86 +30,180 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
   onSearchChange,
   selectedRetailer,
   onRetailerChange,
+  retailerCounts,
   selectedCategory,
   onCategoryChange,
   categories,
   discountedOnly,
   onDiscountedOnlyChange,
+  priceDropsOnly,
+  onPriceDropsOnlyChange,
+  viewMode,
+  onViewModeChange,
   matchedCount
 }) => {
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Global keyboard shortcut '/' to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.key === "/" &&
+        document.activeElement?.tagName !== "INPUT" &&
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
-    <div className="controls-bar">
-      <div className="search-input-wrap">
-        <Search size={16} className="search-icon" />
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search products, brands, or symptoms..."
-          value={searchText}
-          onChange={(e) => onSearchChange(e.target.value)}
-        />
-        {searchText && (
-          <button
-            className="search-clear"
-            onClick={() => onSearchChange("")}
-            title="Clear search"
-          >
-            <X size={16} />
-          </button>
-        )}
-      </div>
+    <div className="toolbar-container">
+      <div className="toolbar-card">
+        {/* Main Row: Search, Retailer Segment, Switches, View Toggle */}
+        <div className="toolbar-main-row">
+          {/* Search Field */}
+          <div className="search-wrapper">
+            <Search size={15} className="search-icon-leading" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              className="search-input-field"
+              placeholder="Search products, brands, symptoms..."
+              value={searchText}
+              onChange={(e) => onSearchChange(e.target.value)}
+              aria-label="Search FSA products"
+            />
+            <div className="search-trailing-actions">
+              {searchText ? (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  onClick={() => onSearchChange("")}
+                  title="Clear search query"
+                  aria-label="Clear search"
+                >
+                  <X size={15} />
+                </button>
+              ) : (
+                <span className="shortcut-badge" title="Press '/' to quickly search">
+                  /
+                </span>
+              )}
+            </div>
+          </div>
 
-      <div className="filters-group">
-        <div className="segmented-control" role="group" aria-label="Retailer Filter">
-          <button
-            className={`segment-btn ${selectedRetailer === "All" ? "active" : ""}`}
-            onClick={() => onRetailerChange("All")}
-          >
-            All Retailers
-          </button>
-          <button
-            className={`segment-btn ${selectedRetailer === "CVS" ? "active" : ""}`}
-            onClick={() => onRetailerChange("CVS")}
-          >
-            CVS
-          </button>
-          <button
-            className={`segment-btn ${selectedRetailer === "Costco" ? "active" : ""}`}
-            onClick={() => onRetailerChange("Costco")}
-          >
-            Costco
-          </button>
+          {/* Retailer Segmented Control */}
+          <div className="retailer-segmented-group" role="group" aria-label="Retailer Filter">
+            <button
+              type="button"
+              className={`retailer-tab-btn ${selectedRetailer === "All" ? "active" : ""}`}
+              onClick={() => onRetailerChange("All")}
+            >
+              <span>All</span>
+              <span className="tab-count">{retailerCounts.all}</span>
+            </button>
+            <button
+              type="button"
+              className={`retailer-tab-btn ${selectedRetailer === "CVS" ? "active" : ""}`}
+              onClick={() => onRetailerChange("CVS")}
+            >
+              <span>CVS</span>
+              <span className="tab-count">{retailerCounts.cvs}</span>
+            </button>
+            <button
+              type="button"
+              className={`retailer-tab-btn ${selectedRetailer === "Costco" ? "active" : ""}`}
+              onClick={() => onRetailerChange("Costco")}
+            >
+              <span>Costco</span>
+              <span className="tab-count">{retailerCounts.costco}</span>
+            </button>
+          </div>
+
+          {/* Modern Toggle Switches */}
+          <div className="switches-group">
+            <label className="custom-switch-label" title="Show only verified discounted items">
+              <input
+                type="checkbox"
+                checked={discountedOnly}
+                onChange={(e) => onDiscountedOnlyChange(e.target.checked)}
+              />
+              <span className="switch-track">
+                <span className="switch-thumb" />
+              </span>
+              <span>On Sale Only</span>
+            </label>
+
+            <label className="custom-switch-label" title="Show only items with recent price drops">
+              <input
+                type="checkbox"
+                checked={priceDropsOnly}
+                onChange={(e) => onPriceDropsOnlyChange(e.target.checked)}
+              />
+              <span className="switch-track">
+                <span className="switch-thumb" />
+              </span>
+              <span>Price Drops Only</span>
+            </label>
+
+            {/* View Mode Toggle */}
+            <div className="view-mode-group">
+              <button
+                type="button"
+                className={`view-mode-btn ${viewMode === "table" ? "active" : ""}`}
+                onClick={() => onViewModeChange("table")}
+                title="Table Spreadsheet View"
+                aria-label="Table view"
+              >
+                <TableIcon size={14} />
+              </button>
+              <button
+                type="button"
+                className={`view-mode-btn ${viewMode === "card" ? "active" : ""}`}
+                onClick={() => onViewModeChange("card")}
+                title="Card Grid View"
+                aria-label="Card view"
+              >
+                <LayoutGrid size={14} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-          <SlidersHorizontal size={15} style={{ color: "var(--text-muted)" }} />
-          <select
-            className="select-filter"
-            value={selectedCategory}
-            onChange={(e) => onCategoryChange(e.target.value)}
-            aria-label="Category Filter"
-          >
-            <option value="All">All Categories</option>
+        {/* Sub-Row: Category Horizontally Scrollable Pills & Results Counter */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+          <div className="category-scroll-bar" role="tablist" aria-label="Product Categories">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedCategory === "All"}
+              className={`category-pill-btn ${selectedCategory === "All" ? "active" : ""}`}
+              onClick={() => onCategoryChange("All")}
+            >
+              All Categories
+            </button>
             {categories.map((cat) => (
-              <option key={cat} value={cat}>
+              <button
+                key={cat}
+                type="button"
+                role="tab"
+                aria-selected={selectedCategory === cat}
+                className={`category-pill-btn ${selectedCategory === cat ? "active" : ""}`}
+                onClick={() => onCategoryChange(cat)}
+              >
                 {cat}
-              </option>
+              </button>
             ))}
-          </select>
+          </div>
+
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+            Showing <strong style={{ color: "var(--text-main)" }} className="font-mono">{matchedCount}</strong> deals
+          </div>
         </div>
-
-        <label className="toggle-switch-label">
-          <input
-            type="checkbox"
-            checked={discountedOnly}
-            onChange={(e) => onDiscountedOnlyChange(e.target.checked)}
-          />
-          <span>Discounted Only</span>
-        </label>
-
-        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginLeft: "0.5rem" }}>
-          Showing <strong>{matchedCount}</strong> items
-        </span>
       </div>
     </div>
   );

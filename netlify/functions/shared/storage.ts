@@ -50,6 +50,10 @@ class LocalFsStorage implements StorageAdapter {
 
   constructor() {
     this.baseDir = path.resolve(process.cwd(), ".data", "blobs");
+    this.ensureDir();
+  }
+
+  private ensureDir(): void {
     if (!fs.existsSync(this.baseDir)) {
       fs.mkdirSync(this.baseDir, { recursive: true });
     }
@@ -72,12 +76,14 @@ class LocalFsStorage implements StorageAdapter {
   }
 
   async set<T>(key: string, value: T): Promise<void> {
+    this.ensureDir();
     const filePath = this.keyToFilePath(key);
     await fs.promises.writeFile(filePath, JSON.stringify(value, null, 2), "utf-8");
   }
 
   async listKeys(prefix?: string): Promise<string[]> {
     try {
+      this.ensureDir();
       const files = await fs.promises.readdir(this.baseDir);
       const keys = files
         .filter((f) => f.endsWith(".json"))
@@ -99,9 +105,7 @@ export function getStorage(): StorageAdapter {
   if (storageInstance) return storageInstance;
 
   try {
-    // Try Netlify Blobs store
     storageInstance = new NetlifyBlobsStorage();
-    // Test if environment is present
     if (!process.env.NETLIFY_BLOBS_CONTEXT && !process.env.BLOBS_CONTEXT) {
       throw new Error("Local environment: fallback to filesystem");
     }
@@ -150,7 +154,6 @@ export async function saveRetailerSnapshot(
 ): Promise<void> {
   const storage = getStorage();
   const key = `snapshot:${retailer.toLowerCase()}`;
-  // RULE 4: NEVER overwrite a valid snapshot with empty results
   if (!products || products.length === 0) {
     console.warn(`Refusing to overwrite ${key} with empty results`);
     return;
@@ -168,7 +171,6 @@ export async function appendProductHistory(productId: string, point: PricePoint)
   const storage = getStorage();
   const key = `history:${productId}`;
   const existing = (await storage.get<PricePoint[]>(key)) || [];
-  // Append-only
   existing.push(point);
   await storage.set(key, existing);
 }

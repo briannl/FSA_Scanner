@@ -4,9 +4,10 @@ import {
   ShieldCheck,
   RefreshCw,
   PlusCircle,
-  AlertTriangle,
-  Clock,
-  Download
+  Download,
+  Sun,
+  Moon,
+  AlertTriangle
 } from "lucide-react";
 
 interface HeaderStatusBarProps {
@@ -15,6 +16,8 @@ interface HeaderStatusBarProps {
   onRefreshAll: () => void;
   onOpenImportModal: () => void;
   onExportCsv: () => void;
+  isDarkMode: boolean;
+  onToggleTheme: () => void;
 }
 
 export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
@@ -22,16 +25,29 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
   isRefreshing,
   onRefreshAll,
   onOpenImportModal,
-  onExportCsv
+  onExportCsv,
+  isDarkMode,
+  onToggleTheme
 }) => {
-  const formatTime = (isoString: string | null) => {
+  const formatTimeAgo = (isoString: string | null) => {
     if (!isoString) return "Never";
     try {
-      const d = new Date(isoString);
-      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", month: "short", day: "numeric" });
+      const diffMs = Date.now() - new Date(isoString).getTime();
+      const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+      if (diffMins < 1) return "Just now";
+      if (diffMins < 60) return `${diffMins}m ago`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours}h ago`;
+      return `${Math.floor(diffHours / 24)}d ago`;
     } catch {
-      return "Unknown";
+      return "Recently";
     }
+  };
+
+  const getHealthDotClass = (retailerStatus: string) => {
+    if (retailerStatus === "success") return "pulse";
+    if (retailerStatus === "blocked_waf" || retailerStatus === "rate_limited") return "waf";
+    return "error";
   };
 
   const hasCvsError = status.cvs.status === "error" || status.cvs.status === "blocked_waf";
@@ -40,92 +56,120 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
 
   return (
     <header className="app-header">
-      <div className="header-top">
-        <div className="brand-wrapper">
-          <div className="brand-icon">
-            <ShieldCheck size={24} />
-          </div>
-          <div>
-            <div className="brand-title">
-              Personal FSA Deal Tracker
-              <span className="brand-badge">FSA / HSA Eligible</span>
+      <div className="header-inner">
+        <div className="brand-section">
+          <a href="#" className="brand-anchor" onClick={(e) => e.preventDefault()}>
+            <div className="brand-logo-icon">
+              <ShieldCheck size={20} strokeWidth={2.2} />
             </div>
-            <p style={{ fontSize: "0.775rem", color: "var(--text-muted)", marginTop: "2px" }}>
-              Automated price intelligence & discount monitoring for CVS and Costco
-            </p>
+            <div>
+              <div className="brand-name">
+                FSA Deal Tracker
+                <span className="fsa-verified-tag">FSA / HSA</span>
+              </div>
+            </div>
+          </a>
+
+          {/* Retailer Live Heartbeat Pills */}
+          <div className="retailer-health-group">
+            <div
+              className="health-pill"
+              title={`CVS: ${status.cvs.status === "success" ? "Online" : status.cvs.status} (${status.cvs.itemCount} items)`}
+            >
+              <span className="pulsing-dot-wrap">
+                <span className={`pulsing-dot ${getHealthDotClass(status.cvs.status)}`} />
+              </span>
+              <span>CVS:</span>
+              <strong>{status.cvs.status === "success" ? "Online" : "Protected"}</strong>
+              <span style={{ opacity: 0.6 }}>•</span>
+              <span className="timestamp font-mono">{formatTimeAgo(status.cvs.lastSuccess || status.cvs.lastAttempt)}</span>
+            </div>
+
+            <div
+              className="health-pill"
+              title={`Costco: ${status.costco.status === "success" ? "Online" : status.costco.status} (${status.costco.itemCount} items)`}
+            >
+              <span className="pulsing-dot-wrap">
+                <span className={`pulsing-dot ${getHealthDotClass(status.costco.status)}`} />
+              </span>
+              <span>Costco:</span>
+              <strong>{status.costco.status === "success" ? "Online" : "Protected"}</strong>
+              <span style={{ opacity: 0.6 }}>•</span>
+              <span className="timestamp font-mono">{formatTimeAgo(status.costco.lastSuccess || status.costco.lastAttempt)}</span>
+            </div>
           </div>
         </div>
 
+        {/* Action Controls */}
         <div className="header-actions">
-          <button
-            className="btn btn-secondary"
-            onClick={onOpenImportModal}
-            title="Import items or manage watchlist URLs"
-          >
-            <PlusCircle size={16} />
-            Watchlist / Import
-          </button>
-
-          <button
-            className="btn btn-secondary"
-            onClick={onExportCsv}
-            title="Export filtered product list to CSV"
-          >
-            <Download size={16} />
-            Export CSV
-          </button>
-
           <button
             className="btn btn-primary"
             onClick={onRefreshAll}
             disabled={isRefreshing}
-            title="Trigger on-demand scraper check"
+            title="Trigger on-demand retailer discovery"
           >
-            <RefreshCw size={16} className={isRefreshing ? "spin-icon" : ""} />
-            {isRefreshing ? "Refreshing..." : "Manual Refresh"}
+            <RefreshCw size={14} className={isRefreshing ? "spin-icon" : ""} />
+            <span>{isRefreshing ? "Syncing..." : "Sync Now"}</span>
+          </button>
+
+          <button
+            className="btn btn-secondary"
+            onClick={onOpenImportModal}
+            title="Manage watchlist or import custom deals"
+          >
+            <PlusCircle size={14} />
+            <span>Watchlist / Import</span>
+          </button>
+
+          <button
+            className="btn btn-ghost"
+            onClick={onExportCsv}
+            title="Export currently filtered grid data as CSV"
+          >
+            <Download size={14} />
+            <span>Export CSV</span>
+          </button>
+
+          <button
+            className="btn btn-icon-only"
+            onClick={onToggleTheme}
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            aria-label="Toggle color theme"
+          >
+            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </div>
       </div>
 
-      <div className="status-bar">
-        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontWeight: 600 }}>
-          <Clock size={14} /> Retailer Heartbeat:
-        </div>
-
-        <div className="retailer-status-item">
-          <span className={`status-dot ${status.cvs.status}`} />
-          <strong>CVS:</strong>
-          <span>{status.cvs.status === "success" ? "Healthy" : status.cvs.status}</span>
-          <span>• Last sync: {formatTime(status.cvs.lastSuccess || status.cvs.lastAttempt)}</span>
-          <span>({status.cvs.itemCount} items)</span>
-        </div>
-
-        <div className="retailer-status-item">
-          <span className={`status-dot ${status.costco.status}`} />
-          <strong>Costco:</strong>
-          <span>{status.costco.status === "success" ? "Healthy" : status.costco.status}</span>
-          <span>• Last sync: {formatTime(status.costco.lastSuccess || status.costco.lastAttempt)}</span>
-          <span>({status.costco.itemCount} items)</span>
-        </div>
-      </div>
-
       {anyError && (
-        <div className="alert-banner">
-          <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: "2px" }} />
-          <div>
-            <strong>Retailer Bot Protection or Collection Warning:</strong>
-            {hasCvsError && (
-              <div>
-                • CVS: {status.cvs.errorMessage || "HTTP 403 / Akamai Bot challenge encountered."}
-              </div>
-            )}
-            {hasCostcoError && (
-              <div>
-                • Costco: {status.costco.errorMessage || "HTTP 403 / Cloudflare WAF block encountered."}
-              </div>
-            )}
-            <div style={{ marginTop: "4px", fontSize: "0.75rem", opacity: 0.9 }}>
-              Tip: Previous valid snapshots are safely retained. You can use the "Watchlist / Import" modal or the 1-click Bookmarklet to feed fresh prices directly from your authenticated browser session.
+        <div
+          style={{
+            maxWidth: "1600px",
+            margin: "0 auto",
+            padding: "0.4rem 1.25rem 0.5rem 1.25rem"
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "var(--amber-light)",
+              border: "1px solid var(--amber-border)",
+              color: "var(--amber)",
+              borderRadius: "var(--radius-md)",
+              padding: "0.5rem 0.85rem",
+              fontSize: "0.775rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem"
+            }}
+          >
+            <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+            <div>
+              <strong>Retailer Bot Guard Warning:</strong>{" "}
+              {hasCvsError && <span>CVS: {status.cvs.errorMessage || "Akamai Bot challenge active. "}</span>}
+              {hasCostcoError && <span>Costco: {status.costco.errorMessage || "Akamai WAF active. "}</span>}
+              <span style={{ opacity: 0.9 }}>
+                Prior valid price snapshots remain active. Use the 1-click Bookmarklet in "Watchlist / Import" to feed fresh deals directly.
+              </span>
             </div>
           </div>
         </div>

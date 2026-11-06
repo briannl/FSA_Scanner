@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { HeaderStatusBar } from "./components/HeaderStatusBar";
-import { MetricsBar } from "./components/MetricsBar";
+import { MetricsBar, KpiFilterType } from "./components/MetricsBar";
 import { ControlsBar } from "./components/ControlsBar";
 import { ProductGrid } from "./components/ProductGrid";
+import { MobileCardView } from "./components/MobileCardView";
 import { ProductDetailDrawer } from "./components/ProductDetailDrawer";
 import { WatchlistImportModal } from "./components/WatchlistImportModal";
 import {
@@ -26,19 +27,55 @@ export const App: React.FC = () => {
     "https://www.costco.com/kirkland-signature-aller-tec-10-mg.-365-tablets.product.100412345.html"
   ]);
 
-  // UI state
+  // Theme state (persisted in localStorage)
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem("fsa_theme") === "dark";
+  });
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.setAttribute("data-theme", "dark");
+      localStorage.setItem("fsa_theme", "dark");
+    } else {
+      document.documentElement.removeAttribute("data-theme");
+      localStorage.setItem("fsa_theme", "light");
+    }
+  }, [isDarkMode]);
+
+  const toggleTheme = () => setIsDarkMode((prev) => !prev);
+
+  // Viewport & View Mode state (defaults to "card" on mobile, "table" on desktop)
+  const [viewMode, setViewMode] = useState<"table" | "card">(() => {
+    return typeof window !== "undefined" && window.innerWidth < 768 ? "card" : "table";
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setViewMode("card");
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Filter state
   const [searchText, setSearchText] = useState("");
   const [selectedRetailer, setSelectedRetailer] = useState<"All" | Retailer>("All");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [discountedOnly, setDiscountedOnly] = useState<boolean>(true); // Active by default
+  const [priceDropsOnly, setPriceDropsOnly] = useState<boolean>(false);
+  const [activeKpiFilter, setActiveKpiFilter] = useState<KpiFilterType>("none");
+
+  // Selection & Modal state
   const [selectedProduct, setSelectedProduct] = useState<ProductObservation | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // CSV export hook from AG Grid
+  // CSV export function hook from AG Grid
   const [exportCsvFn, setExportCsvFn] = useState<(() => void) | null>(null);
 
-  // Fetch from /api/products if server is running
+  // Load data from /api/products
   const loadData = useCallback(async () => {
     try {
       const res = await fetch("/api/products");
@@ -58,8 +95,7 @@ export const App: React.FC = () => {
         }
       }
     } catch {
-      // In standalone client or test environment, fallback to seed data
-      console.info("Using embedded seed catalog");
+      console.info("Using embedded seed catalog fallback");
     }
   }, []);
 
@@ -67,7 +103,7 @@ export const App: React.FC = () => {
     loadData();
   }, [loadData]);
 
-  // Trigger manual refresh
+  // Trigger on-demand sync
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
     try {
@@ -79,7 +115,6 @@ export const App: React.FC = () => {
       if (res.ok) {
         await loadData();
       } else {
-        // Fallback update timestamp and drop flags if API offline
         const now = new Date().toISOString();
         setStatus((prev) => ({
           ...prev,
@@ -97,7 +132,7 @@ export const App: React.FC = () => {
         updatedAt: now
       }));
     } finally {
-      setTimeout(() => setIsRefreshing(false), 600);
+      setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
@@ -111,11 +146,11 @@ export const App: React.FC = () => {
         body: JSON.stringify({ action: "add_watchlist", url })
       });
     } catch {
-      // client-side state already updated
+      // client state updated
     }
   };
 
-  // Manual Import
+  // Import Manual Products
   const handleImportProducts = async (imported: ProductObservation[]) => {
     setProducts((prev) => {
       const map = new Map(prev.map((p) => [p.id, p]));
@@ -123,7 +158,6 @@ export const App: React.FC = () => {
       return Array.from(map.values());
     });
 
-    // Also append to histories
     setHistories((prev) => {
       const updated = { ...prev };
       imported.forEach((item) => {
@@ -147,11 +181,11 @@ export const App: React.FC = () => {
         body: JSON.stringify({ action: "import_products", products: imported })
       });
     } catch {
-      // client-side state already updated
+      // client state updated
     }
   };
 
-  // Extract unique categories
+  // Extract categories
   const categories = useMemo(() => {
     const set = new Set<string>();
     products.forEach((p) => {
@@ -160,32 +194,73 @@ export const App: React.FC = () => {
     return Array.from(set).sort();
   }, [products]);
 
-  // Filter products for the AG Grid
+  // Compute retailer counts for the segmented control
+  const retailerCounts = useMemo(() => {
+    return {
+      all: products.length,
+      cvs: products.filter((p) => p.retailer === "CVS").length,
+      costco: products.filter((p) => p.retailer === "Costco").length
+    };
+  }, [products]);
+
+  // Filter products for Table / Card views
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      // Retailer filter
+      // Retailer Filter
       if (selectedRetailer !== "All" && p.retailer !== selectedRetailer) {
         return false;
       }
-      // Category filter
+      // Category Filter
       if (selectedCategory !== "All" && p.category !== selectedCategory) {
         return false;
       }
-      // Discounted only toggle
+      // "On Sale Only" Toggle
       if (discountedOnly) {
         const hasDiscount = (p.discountPercent > 0 || p.discountAmount > 0) && p.priceStatus === "confirmed";
         if (!hasDiscount) return false;
       }
+      // "Price Drops Only" Toggle
+      if (priceDropsOnly && !p.isRecentDrop) {
+        return false;
+      }
+      // KPI Ribbon Quick-Filter Overrides
+      if (activeKpiFilter === "recent_drops" && !p.isRecentDrop) {
+        return false;
+      }
+      if (activeKpiFilter === "all_time_low") {
+        const isLowest =
+          p.lowestHistoricalPrice !== null &&
+          p.currentPrice !== null &&
+          p.currentPrice <= p.lowestHistoricalPrice;
+        if (!isLowest) return false;
+      }
+      if (activeKpiFilter === "active_deals") {
+        const hasDiscount = (p.discountPercent > 0 || p.discountAmount > 0) && p.priceStatus === "confirmed";
+        if (!hasDiscount) return false;
+      }
+
       return true;
     });
-  }, [products, selectedRetailer, selectedCategory, discountedOnly]);
+  }, [products, selectedRetailer, selectedCategory, discountedOnly, priceDropsOnly, activeKpiFilter]);
 
+  // Export CSV Handler
   const handleExportCsv = () => {
     if (exportCsvFn) {
       exportCsvFn();
     } else {
-      // Fallback CSV generation for filtered products
-      const headers = ["retailer", "name", "category", "currentPrice", "regularPrice", "discountPercent", "discountAmount", "unitPrice", "promoType", "promoDetails", "productUrl"];
+      const headers = [
+        "retailer",
+        "name",
+        "category",
+        "currentPrice",
+        "regularPrice",
+        "discountPercent",
+        "discountAmount",
+        "unitPrice",
+        "promoType",
+        "promoDetails",
+        "productUrl"
+      ];
       const rows = filteredProducts.map((p) => [
         `"${p.retailer}"`,
         `"${p.name.replace(/"/g, '""')}"`,
@@ -213,42 +288,69 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
+      {/* 1. Sticky Header & Command Bar */}
       <HeaderStatusBar
         status={status}
         isRefreshing={isRefreshing}
         onRefreshAll={handleRefreshAll}
         onOpenImportModal={() => setIsImportModalOpen(true)}
         onExportCsv={handleExportCsv}
+        isDarkMode={isDarkMode}
+        onToggleTheme={toggleTheme}
       />
 
-      <MetricsBar products={products} />
+      {/* 2. 4-Card KPI Summary Ribbon */}
+      <MetricsBar
+        products={products}
+        activeKpiFilter={activeKpiFilter}
+        onSelectKpiFilter={setActiveKpiFilter}
+        onInspectProduct={(prod) => setSelectedProduct(prod)}
+      />
 
+      {/* 3. Unified Filter & Search Toolbar */}
       <ControlsBar
         searchText={searchText}
         onSearchChange={setSearchText}
         selectedRetailer={selectedRetailer}
         onRetailerChange={setSelectedRetailer}
+        retailerCounts={retailerCounts}
         selectedCategory={selectedCategory}
         onCategoryChange={setSelectedCategory}
         categories={categories}
         discountedOnly={discountedOnly}
         onDiscountedOnlyChange={setDiscountedOnly}
+        priceDropsOnly={priceDropsOnly}
+        onPriceDropsOnlyChange={setPriceDropsOnly}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
         matchedCount={filteredProducts.length}
       />
 
-      <ProductGrid
-        products={filteredProducts}
-        quickFilterText={searchText}
-        onSelectProduct={(product) => setSelectedProduct(product)}
-        onGridReadyExportHook={(fn) => setExportCsvFn(() => fn)}
-      />
+      {/* 4 & 6. View Mode: AG Grid Table View or Mobile Card View */}
+      {viewMode === "table" ? (
+        <ProductGrid
+          products={filteredProducts}
+          quickFilterText={searchText}
+          onSelectProduct={(product) => setSelectedProduct(product)}
+          onGridReadyExportHook={(fn) => setExportCsvFn(() => fn)}
+          isDarkMode={isDarkMode}
+        />
+      ) : (
+        <MobileCardView
+          products={filteredProducts}
+          onSelectProduct={(product) => setSelectedProduct(product)}
+        />
+      )}
 
+      {/* 5. Slide-Over Product Inspector Drawer */}
       <ProductDetailDrawer
         product={selectedProduct}
         history={selectedProduct ? histories[selectedProduct.id] || [] : []}
         onClose={() => setSelectedProduct(null)}
+        isDarkMode={isDarkMode}
       />
 
+      {/* Watchlist & Import Modal */}
       <WatchlistImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}

@@ -7,34 +7,88 @@ import {
   ICellRendererParams,
   GridReadyEvent,
   GridApi,
-  RowSelectedEvent
+  RowSelectedEvent,
+  themeQuartz
 } from "ag-grid-community";
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-quartz.css";
 import { ProductObservation } from "../types/product";
 import {
   ExternalLink,
   TrendingDown,
   Award,
   LineChart,
-  HelpCircle
+  HelpCircle,
+  CheckCircle2,
+  Package,
+  Activity,
+  HeartPulse,
+  Sun,
+  Eye,
+  Bandage
 } from "lucide-react";
 
 // Register Community Modules for AG Grid Community v33+
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+// Customized Quartz Themes for Fintech Light & Dark Terminals
+const lightGridTheme = themeQuartz.withParams({
+  backgroundColor: "#ffffff",
+  foregroundColor: "#0f172a",
+  headerBackgroundColor: "#f8fafc",
+  headerTextColor: "#475569",
+  borderColor: "#e2e8f0",
+  rowHoverColor: "#f8fafc",
+  accentColor: "#0284c7",
+  fontSize: 13,
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+});
+
+const darkGridTheme = themeQuartz.withParams({
+  backgroundColor: "#0f172a",
+  foregroundColor: "#f8fafc",
+  headerBackgroundColor: "#1e293b",
+  headerTextColor: "#94a3b8",
+  borderColor: "#1e293b",
+  rowHoverColor: "#1e293b",
+  accentColor: "#38bdf8",
+  fontSize: 13,
+  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+});
 
 interface ProductGridProps {
   products: ProductObservation[];
   quickFilterText: string;
   onSelectProduct: (product: ProductObservation) => void;
   onGridReadyExportHook?: (exportCsvFn: () => void) => void;
+  isDarkMode?: boolean;
 }
+
+// Category fallback icon helper
+const renderCategoryFallbackIcon = (category: string) => {
+  const cat = category.toLowerCase();
+  if (cat.includes("diag") || cat.includes("blood") || cat.includes("pressure")) {
+    return <Activity size={18} />;
+  }
+  if (cat.includes("first aid") || cat.includes("wound") || cat.includes("bandage")) {
+    return <Bandage size={18} />;
+  }
+  if (cat.includes("sun")) {
+    return <Sun size={18} />;
+  }
+  if (cat.includes("vision") || cat.includes("eye")) {
+    return <Eye size={18} />;
+  }
+  if (cat.includes("otc") || cat.includes("med")) {
+    return <HeartPulse size={18} />;
+  }
+  return <Package size={18} />;
+};
 
 export const ProductGrid: React.FC<ProductGridProps> = ({
   products,
   quickFilterText,
   onSelectProduct,
-  onGridReadyExportHook
+  onGridReadyExportHook,
+  isDarkMode = false
 }) => {
   const gridApiRef = useRef<GridApi<ProductObservation> | null>(null);
 
@@ -69,54 +123,70 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
     [onGridReadyExportHook, exportFilteredCsv]
   );
 
+  // 6 High-Signal Composite Columns
   const columnDefs = useMemo<ColDef<ProductObservation>[]>(() => {
     return [
+      // 1. PRODUCT (Pinned Left, minWidth 320px)
       {
-        headerName: "Retailer",
-        field: "retailer",
-        width: 105,
-        cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
-          const val = params.value as "CVS" | "Costco";
-          return (
-            <span className={`retailer-pill ${val ? val.toLowerCase() : ""}`}>
-              {val}
-            </span>
-          );
-        }
-      },
-      {
-        headerName: "Product Name & Category",
+        headerName: "Product",
         field: "name",
-        minWidth: 320,
+        pinned: "left",
+        minWidth: 340,
         flex: 2,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
           if (!item) return null;
+
           return (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", overflow: "hidden" }}>
-              <span className="product-cell-name" title={item.name}>
-                {item.name}
-              </span>
-              <span className="product-category-tag">{item.category}</span>
-              <a
-                href={item.productUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                title="Open product page on retailer website"
-                style={{ color: "var(--primary)", display: "inline-flex", marginLeft: "auto", padding: "2px" }}
-              >
-                <ExternalLink size={14} />
-              </a>
+            <div className="product-composite-cell">
+              <div className="product-thumb-box" title={item.category}>
+                {item.imageUrl ? (
+                  <img
+                    src={item.imageUrl}
+                    alt=""
+                    className="product-thumb-img"
+                    onError={(e) => {
+                      // Fallback on broken image load
+                      (e.target as HTMLElement).style.display = "none";
+                    }}
+                  />
+                ) : (
+                  renderCategoryFallbackIcon(item.category)
+                )}
+              </div>
+
+              <div className="product-info-stack">
+                <div className="product-title-line" title={item.name}>
+                  {item.name}
+                </div>
+                <div className="product-meta-subline">
+                  <span className={`retailer-pill ${item.retailer.toLowerCase()}`}>
+                    {item.retailer}
+                  </span>
+                  <span>•</span>
+                  <span>{item.size || item.category}</span>
+                  {item.fsaEligible && (
+                    <>
+                      <span>•</span>
+                      <span className="fsa-check-badge">
+                        <CheckCircle2 size={11} /> FSA
+                      </span>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           );
         }
       },
+
+      // 2. PRICE & REFERENCE (width 150px, right-aligned)
       {
-        headerName: "Current Price",
+        headerName: "Price & Reference",
         field: "currentPrice",
-        width: 130,
+        width: 155,
         sortable: true,
+        headerClass: "ag-right-aligned-header",
         comparator: (a: number | null, b: number | null) => {
           if (a === null) return 1;
           if (b === null) return -1;
@@ -128,96 +198,83 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 
           if (item.priceStatus === "uncertain" || item.currentPrice === null) {
             return (
-              <span className="price-uncertain" title="Price depends on local inventory/login">
-                <HelpCircle size={12} style={{ display: "inline", verticalAlign: "middle", marginRight: "3px" }} />
-                Uncertain
-              </span>
+              <div className="price-composite-cell">
+                <span className="price-uncertain-badge" title="Price varies by store or inventory level">
+                  <HelpCircle size={11} /> Uncertain
+                </span>
+              </div>
             );
           }
 
           return (
-            <div>
-              <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>
-                ${item.currentPrice.toFixed(2)}
-              </span>
-              {item.regularPrice && item.regularPrice > item.currentPrice && (
-                <span className="price-strike">${item.regularPrice.toFixed(2)}</span>
+            <div className="price-composite-cell">
+              <div className="price-main-row font-mono">
+                <span className="price-current-bold">${item.currentPrice.toFixed(2)}</span>
+                {item.regularPrice && item.regularPrice > item.currentPrice && (
+                  <span className="price-regular-strike">${item.regularPrice.toFixed(2)}</span>
+                )}
+              </div>
+              {item.unitPrice && (
+                <div className="price-unit-subline font-mono">{item.unitPrice}</div>
               )}
             </div>
           );
         }
       },
-      {
-        headerName: "Discount %",
-        field: "discountPercent",
-        width: 120,
-        sort: "desc", // Default sort: discount % descending
-        sortable: true,
-        cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
-          const val = params.value as number;
-          if (!val || val <= 0) return <span style={{ color: "var(--text-muted)" }}>—</span>;
-          return <span className="discount-pill">-{val.toFixed(1)}%</span>;
-        }
-      },
+
+      // 3. SAVINGS (width 140px, default sort descending)
       {
         headerName: "Savings",
-        field: "discountAmount",
-        width: 110,
+        field: "discountPercent",
+        width: 140,
+        sort: "desc", // Default sort: highest discount first
         sortable: true,
-        cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
-          const val = params.value as number;
-          if (!val || val <= 0) return <span style={{ color: "var(--text-muted)" }}>—</span>;
-          return (
-            <span style={{ color: "var(--success)", fontWeight: 600 }}>
-              -${val.toFixed(2)}
-            </span>
-          );
-        }
-      },
-      {
-        headerName: "Unit Price",
-        field: "unitPrice",
-        width: 125,
-        sortable: true,
+        comparator: (a: number, b: number) => (a || 0) - (b || 0),
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
+          if (!item || !item.discountPercent || item.discountPercent <= 0) {
+            return <div className="savings-composite-cell"><span style={{ color: "var(--text-subtle)" }}>—</span></div>;
+          }
+
           return (
-            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-              {item?.unitPrice || item?.size || "—"}
-            </span>
+            <div className="savings-composite-cell">
+              <span className="savings-badge-pill font-mono">
+                -{item.discountPercent.toFixed(1)}%
+              </span>
+              {item.discountAmount > 0 && (
+                <span className="savings-dollar-subline font-mono">
+                  Save ${item.discountAmount.toFixed(2)}
+                </span>
+              )}
+            </div>
           );
         }
       },
+
+      // 4. PROMOTION TYPE (width 180px)
       {
-        headerName: "Promo Type & Details",
+        headerName: "Promotion Type",
         field: "promoType",
-        minWidth: 220,
-        flex: 1,
+        width: 185,
+        sortable: true,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
           if (!item) return null;
 
-          let badgeClass = "badge-none";
-          if (item.promoType === "Standard Markdown") badgeClass = "badge-markdown";
-          else if (item.promoType === "Costco Instant Savings") badgeClass = "badge-instant";
-          else if (item.promoType === "CVS Promo") badgeClass = "badge-cvspromo";
-          else if (item.promoType === "Multi-Buy") badgeClass = "badge-multibuy";
-          else if (item.promoType === "Coupon Only") badgeClass = "badge-coupon";
+          let badgeClass = "none";
+          if (item.promoType === "Costco Instant Savings") badgeClass = "instant";
+          else if (item.promoType === "Standard Markdown") badgeClass = "markdown";
+          else if (item.promoType === "CVS Promo") badgeClass = "cvs";
+          else if (item.promoType === "Multi-Buy") badgeClass = "multibuy";
+          else if (item.promoType === "Coupon Only") badgeClass = "coupon";
 
           return (
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", overflow: "hidden" }}>
-              <span className={`badge-promo ${badgeClass}`}>{item.promoType}</span>
+            <div className="promo-type-cell">
+              <span className={`promo-semantic-badge ${badgeClass}`}>
+                {item.promoType}
+              </span>
               {item.promoDetails && (
-                <span
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "var(--text-muted)",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis"
-                  }}
-                  title={item.promoDetails}
-                >
+                <span className="promo-details-subline" title={item.promoDetails}>
                   {item.promoDetails}
                 </span>
               )}
@@ -225,9 +282,11 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
           );
         }
       },
+
+      // 5. PRICE CONTEXT (width 160px)
       {
-        headerName: "Signals",
-        width: 160,
+        headerName: "Price Context",
+        width: 165,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
           if (!item) return null;
@@ -238,37 +297,69 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
             item.currentPrice <= item.lowestHistoricalPrice;
 
           return (
-            <div style={{ display: "flex", alignItems: "center" }}>
+            <div className="price-context-cell">
               {item.isRecentDrop && (
-                <span className="badge-drop" title="Price decreased in the latest observation">
-                  <TrendingDown size={11} /> Drop
+                <span className="badge-recent-drop" title="Price decreased since last check">
+                  <TrendingDown size={12} /> Drop
                 </span>
               )}
-              {isLowest && (
-                <span className="badge-low" title="At or below all-time lowest recorded price!">
-                  <Award size={11} /> All-Time Low
+              {isLowest ? (
+                <span className="badge-alltime-low" title="At or below all-time lowest recorded price!">
+                  <Award size={12} /> All-Time Low
                 </span>
+              ) : (
+                item.lowestHistoricalPrice &&
+                item.currentPrice &&
+                item.currentPrice > item.lowestHistoricalPrice && (
+                  <span
+                    className="badge-above-low font-mono"
+                    title={`Lowest historical: $${item.lowestHistoricalPrice.toFixed(2)}`}
+                  >
+                    +${(item.currentPrice - item.lowestHistoricalPrice).toFixed(2)} from low
+                  </span>
+                )
               )}
-              {!item.isRecentDrop && !isLowest && (
-                <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>Normal</span>
+              {!item.isRecentDrop && !isLowest && !item.lowestHistoricalPrice && (
+                <span style={{ color: "var(--text-subtle)", fontSize: "0.75rem" }}>Baseline</span>
               )}
             </div>
           );
         }
       },
+
+      // 6. ACTIONS (Pinned Right, width 110px)
       {
-        headerName: "Action",
-        width: 105,
+        headerName: "Actions",
+        pinned: "right",
+        width: 125,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
+          if (!item) return null;
+
           return (
-            <button
-              className="btn btn-secondary"
-              style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem" }}
-              onClick={() => item && onSelectProduct(item)}
-            >
-              <LineChart size={13} /> Chart
-            </button>
+            <div className="actions-cell-group">
+              <button
+                type="button"
+                className="btn-inspect"
+                onClick={() => onSelectProduct(item)}
+                title="Inspect price history chart and deal conditions"
+              >
+                <LineChart size={13} />
+                <span>Inspect</span>
+              </button>
+
+              <a
+                href={item.productUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-buy-link"
+                title={`Open product page on ${item.retailer}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span>Buy</span>
+                <ExternalLink size={11} />
+              </a>
+            </div>
           );
         }
       }
@@ -292,10 +383,10 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   );
 
   return (
-    <div className="grid-container-wrapper">
-      <div className="grid-wrapper ag-theme-quartz">
+    <div className="grid-section-container">
+      <div className="grid-card-box">
         <AgGridReact<ProductObservation>
-          theme="legacy"
+          theme={isDarkMode ? darkGridTheme : lightGridTheme}
           rowData={products}
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
@@ -303,6 +394,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
           rowSelection={{ mode: "singleRow", enableClickSelection: true }}
           onRowSelected={onRowSelected}
           onGridReady={onGridReady}
+          rowHeight={56}
           animateRows={true}
           pagination={true}
           paginationPageSize={20}

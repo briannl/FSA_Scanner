@@ -19,7 +19,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: true,
     lowestHistoricalPrice: 42.99,
-    imageUrl: "https://images.cvs.com/is/image/CVS/108201_front",
+    imageUrl: null,
     productUrl: "https://www.cvs.com/shop/cvs-health-series-400-upper-arm-blood-pressure-monitor-prodid-108201",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -41,7 +41,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: false,
     lowestHistoricalPrice: 21.99,
-    imageUrl: "https://images.cvs.com/is/image/CVS/324519_front",
+    imageUrl: null,
     productUrl: "https://www.cvs.com/shop/flonase-allergy-relief-nasal-spray-0-54-oz-prodid-324519",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -63,7 +63,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: false,
     lowestHistoricalPrice: 4.49,
-    imageUrl: "https://images.cvs.com/is/image/CVS/882103_front",
+    imageUrl: null,
     productUrl: "https://www.cvs.com/shop/cvs-health-antibacterial-flexible-fabric-bandages-60ct-prodid-882103",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -85,7 +85,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: true,
     lowestHistoricalPrice: 32.99,
-    imageUrl: "https://images.cvs.com/is/image/CVS/492104_front",
+    imageUrl: null,
     productUrl: "https://www.cvs.com/shop/la-roche-posay-anthelios-mineral-ultra-light-sunscreen-spf-50-1-7-oz-prodid-492104",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -107,7 +107,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: false,
     lowestHistoricalPrice: 19.99,
-    imageUrl: "https://images.cvs.com/is/image/CVS/651290_front",
+    imageUrl: null,
     productUrl: "https://www.cvs.com/shop/biotrue-multi-purpose-solution-twin-pack-prodid-651290",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -129,7 +129,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "uncertain",
     isRecentDrop: false,
     lowestHistoricalPrice: 64.99,
-    imageUrl: "https://images.cvs.com/is/image/CVS/773194_front",
+    imageUrl: null,
     productUrl: "https://www.cvs.com/shop/omron-7-series-upper-arm-blood-pressure-monitor-prodid-773194",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -153,7 +153,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: true,
     lowestHistoricalPrice: 10.99,
-    imageUrl: "https://images.costco-static.com/ImageDelivery/templatedata/item/100412345",
+    imageUrl: null,
     productUrl: "https://www.costco.com/kirkland-signature-aller-tec-10-mg.-365-tablets.product.100412345.html",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -175,7 +175,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: false,
     lowestHistoricalPrice: 18.99,
-    imageUrl: "https://images.costco-static.com/ImageDelivery/templatedata/item/100588219",
+    imageUrl: null,
     productUrl: "https://www.costco.com/theratears-dry-eye-therapy-eye-drops-value-pack.product.100588219.html",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -197,7 +197,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: true,
     lowestHistoricalPrice: 74.99,
-    imageUrl: "https://images.costco-static.com/ImageDelivery/templatedata/item/100293847",
+    imageUrl: null,
     productUrl: "https://www.costco.com/omron-10-series-blood-pressure-monitor.product.100293847.html",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -219,7 +219,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: false,
     lowestHistoricalPrice: 16.99,
-    imageUrl: "https://images.costco-static.com/ImageDelivery/templatedata/item/100774211",
+    imageUrl: null,
     productUrl: "https://www.costco.com/neutrogena-ultra-sheer-spf-55-sunscreen-3-pack.product.100774211.html",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -241,7 +241,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: false,
     lowestHistoricalPrice: 12.99,
-    imageUrl: "https://images.costco-static.com/ImageDelivery/templatedata/item/100194827",
+    imageUrl: null,
     productUrl: "https://www.costco.com/curad-performance-bandages-200ct.product.100194827.html",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
@@ -263,7 +263,7 @@ export const SEED_PRODUCTS: ProductObservation[] = [
     priceStatus: "confirmed",
     isRecentDrop: true,
     lowestHistoricalPrice: 34.99,
-    imageUrl: "https://images.costco-static.com/ImageDelivery/templatedata/item/100654321",
+    imageUrl: null,
     productUrl: "https://www.costco.com/accu-chek-guide-me-glucose-monitoring-system.product.100654321.html",
     sourceType: "fixture",
     observedAt: "2026-11-06T08:30:00.000Z"
