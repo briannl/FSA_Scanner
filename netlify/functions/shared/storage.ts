@@ -116,17 +116,30 @@ export function getStorage(): StorageAdapter {
   return storageInstance;
 }
 
+export const ALL_RETAILERS: Retailer[] = [
+  "CVS",
+  "Costco",
+  "Amazon",
+  "Ralphs",
+  "Vons",
+  "Instacart",
+  "H Mart",
+  "99 Ranch",
+  "Smart & Final",
+  "Trader Joe's"
+];
+
 // Seed helper: ensure initial data exists in storage
 export async function ensureSeeded(storage: StorageAdapter): Promise<void> {
   const existingStatus = await storage.get<TrackerStatus>("meta:status");
   if (!existingStatus) {
     await storage.set("meta:status", INITIAL_STATUS);
 
-    const cvsItems = SEED_PRODUCTS.filter((p) => p.retailer === "CVS");
-    const costcoItems = SEED_PRODUCTS.filter((p) => p.retailer === "Costco");
-
-    await storage.set("snapshot:cvs", cvsItems);
-    await storage.set("snapshot:costco", costcoItems);
+    for (const retailer of ALL_RETAILERS) {
+      const items = SEED_PRODUCTS.filter((p) => p.retailer === retailer);
+      const key = `snapshot:${retailer.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
+      await storage.set(key, items);
+    }
 
     for (const [id, history] of Object.entries(SEED_PRICE_HISTORIES)) {
       await storage.set(`history:${id}`, history);
@@ -143,9 +156,12 @@ export async function ensureSeeded(storage: StorageAdapter): Promise<void> {
 export async function getRetailerSnapshot(retailer: Retailer): Promise<ProductObservation[]> {
   const storage = getStorage();
   await ensureSeeded(storage);
-  const key = `snapshot:${retailer.toLowerCase()}`;
+  const key = `snapshot:${retailer.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
   const data = await storage.get<ProductObservation[]>(key);
-  return data || [];
+  if (!data || data.length === 0) {
+    return SEED_PRODUCTS.filter((p) => p.retailer === retailer);
+  }
+  return data;
 }
 
 export async function saveRetailerSnapshot(
@@ -153,7 +169,7 @@ export async function saveRetailerSnapshot(
   products: ProductObservation[]
 ): Promise<void> {
   const storage = getStorage();
-  const key = `snapshot:${retailer.toLowerCase()}`;
+  const key = `snapshot:${retailer.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
   if (!products || products.length === 0) {
     console.warn(`Refusing to overwrite ${key} with empty results`);
     return;

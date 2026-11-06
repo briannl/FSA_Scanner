@@ -1403,6 +1403,12 @@ body {
   justify-content: center;
 }
 
+.drawer-overlay.compare-modal-overlay {
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
 /* Desktop Side Panel */
 .drawer-content-sheet.desktop-side-panel {
   width: 480px;

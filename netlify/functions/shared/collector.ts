@@ -14,7 +14,8 @@ import {
   getTrackerStatus,
   updateTrackerStatus,
   getWatchlist,
-  saveWatchlist
+  saveWatchlist,
+  ALL_RETAILERS
 } from "./storage";
 import { fetchCvsProducts } from "./cvsAdapter";
 import { fetchCostcoProducts } from "./costcoAdapter";
@@ -277,14 +278,13 @@ export async function ingestScrapedProducts(
 }
 
 export async function getAllProductsData(): Promise<ProductsApiResponse> {
-  const [cvsList, costcoList, status, watchlist] = await Promise.all([
-    getRetailerSnapshot("CVS"),
-    getRetailerSnapshot("Costco"),
+  const [snapshots, status, watchlist] = await Promise.all([
+    Promise.all(ALL_RETAILERS.map((r) => getRetailerSnapshot(r))),
     getTrackerStatus(),
     getWatchlist()
   ]);
 
-  const allProducts = [...cvsList, ...costcoList];
+  const allProducts = snapshots.flat();
   const histories: Record<string, PricePoint[]> = {};
 
   await Promise.all(

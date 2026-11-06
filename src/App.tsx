@@ -7,6 +7,9 @@ import { MobileCardView } from "./components/MobileCardView";
 import { ProductDetailDrawer } from "./components/ProductDetailDrawer";
 import { WatchlistImportModal } from "./components/WatchlistImportModal";
 import { FloatingBottomNav } from "./components/FloatingBottomNav";
+import { DiscoverView } from "./components/DiscoverView";
+import { CompareOffersModal } from "./components/CompareOffersModal";
+import { GroupedProduct } from "./services/productMatcher";
 import {
   ProductObservation,
   PricePoint,
@@ -57,6 +60,10 @@ export const App: React.FC = () => {
 
   const isMobileViewport = windowWidth < 768;
   const isTabletViewport = windowWidth >= 768 && windowWidth < 1200;
+
+  // Top-level navigation mode: "deals" (Deals Tracker) or "discover" (Discover & Compare Stores)
+  const [appMode, setAppMode] = useState<"deals" | "discover">("deals");
+  const [selectedGroupedProduct, setSelectedGroupedProduct] = useState<GroupedProduct | null>(null);
 
   // View mode state for tablet/desktop
   const [viewMode, setViewMode] = useState<"table" | "card">("table");
@@ -329,14 +336,6 @@ export const App: React.FC = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleFocusSearch = () => {
-    const input = document.getElementById("fsa-search-input");
-    if (input) {
-      input.scrollIntoView({ behavior: "smooth", block: "center" });
-      setTimeout(() => input.focus(), 300);
-    }
-  };
-
   return (
     <div className={`app-container ${isMobileViewport ? "has-floating-nav" : ""}`}>
       {/* 1. Sticky Command Bar & Live Retailer Heartbeat Header */}
@@ -351,48 +350,80 @@ export const App: React.FC = () => {
         isMobile={isMobileViewport}
       />
 
-      {/* 2. 4-Card KPI Summary Ribbon (Desktop: 4 cols, Tablet: 2 cols, Mobile: 2/1 cols) */}
-      <MetricsBar
-        products={products}
-        activeKpiFilter={activeKpiFilter}
-        onSelectKpiFilter={setActiveKpiFilter}
-        onInspectProduct={(prod) => setSelectedProduct(prod)}
-      />
+      {/* View Switcher Bar: Deals Tracker vs Discover Stores & Compare */}
+      <div style={{ maxWidth: "1600px", margin: "0.85rem auto 0 auto", padding: "0 1.25rem", display: "flex", gap: "0.5rem", alignItems: "center" }}>
+        <button
+          type="button"
+          className={`pill-tab ${appMode === "deals" ? "active" : ""}`}
+          onClick={() => setAppMode("deals")}
+          style={{ padding: "0.4rem 1rem", fontSize: "0.825rem", fontWeight: 700 }}
+        >
+          🔥 Deals & Discounts
+        </button>
+        <button
+          type="button"
+          className={`pill-tab ${appMode === "discover" ? "active" : ""}`}
+          onClick={() => setAppMode("discover")}
+          style={{ padding: "0.4rem 1rem", fontSize: "0.825rem", fontWeight: 700 }}
+        >
+          🧭 Discover Stores & Compare
+        </button>
+      </div>
 
-      {/* 3. Unified Filter & Search Toolbar */}
-      <ControlsBar
-        searchText={searchText}
-        onSearchChange={setSearchText}
-        selectedRetailer={selectedRetailer}
-        onRetailerChange={setSelectedRetailer}
-        retailerCounts={retailerCounts}
-        selectedCategory={selectedCategory}
-        onCategoryChange={setSelectedCategory}
-        categories={categories}
-        discountedOnly={discountedOnly}
-        onDiscountedOnlyChange={setDiscountedOnly}
-        priceDropsOnly={priceDropsOnly}
-        onPriceDropsOnlyChange={setPriceDropsOnly}
-        viewMode={viewMode}
-        onViewModeChange={setViewMode}
-        matchedCount={filteredProducts.length}
-        isMobile={isMobileViewport}
-      />
+      {appMode === "deals" ? (
+        <>
+          {/* 2. 4-Card KPI Summary Ribbon (Desktop: 4 cols, Tablet: 2 cols, Mobile: 2/1 cols) */}
+          <MetricsBar
+            products={products}
+            activeKpiFilter={activeKpiFilter}
+            onSelectKpiFilter={setActiveKpiFilter}
+            onInspectProduct={(prod) => setSelectedProduct(prod)}
+          />
 
-      {/* 4 & 6. View Mode: Responsive Product Cards on Mobile (<768px), Spreadsheet Table on Desktop */}
-      {isMobileViewport || viewMode === "card" ? (
-        <MobileCardView
-          products={filteredProducts}
-          onSelectProduct={(product) => setSelectedProduct(product)}
-        />
+          {/* 3. Unified Filter & Search Toolbar */}
+          <ControlsBar
+            searchText={searchText}
+            onSearchChange={setSearchText}
+            selectedRetailer={selectedRetailer}
+            onRetailerChange={setSelectedRetailer}
+            retailerCounts={retailerCounts}
+            selectedCategory={selectedCategory}
+            onCategoryChange={setSelectedCategory}
+            categories={categories}
+            discountedOnly={discountedOnly}
+            onDiscountedOnlyChange={setDiscountedOnly}
+            priceDropsOnly={priceDropsOnly}
+            onPriceDropsOnlyChange={setPriceDropsOnly}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            matchedCount={filteredProducts.length}
+            isMobile={isMobileViewport}
+          />
+
+          {/* 4 & 6. View Mode: Responsive Product Cards on Mobile (<768px), Spreadsheet Table on Desktop */}
+          {isMobileViewport || viewMode === "card" ? (
+            <MobileCardView
+              products={filteredProducts}
+              onSelectProduct={(product) => setSelectedProduct(product)}
+            />
+          ) : (
+            <ProductGrid
+              products={filteredProducts}
+              quickFilterText={searchText}
+              onSelectProduct={(product) => setSelectedProduct(product)}
+              onGridReadyExportHook={(fn) => setExportCsvFn(() => fn)}
+              isDarkMode={isDarkMode}
+              isTablet={isTabletViewport}
+            />
+          )}
+        </>
       ) : (
-        <ProductGrid
-          products={filteredProducts}
-          quickFilterText={searchText}
-          onSelectProduct={(product) => setSelectedProduct(product)}
-          onGridReadyExportHook={(fn) => setExportCsvFn(() => fn)}
-          isDarkMode={isDarkMode}
-          isTablet={isTabletViewport}
+        /* Discover Page: FSAFEDS categories, 10 Retailer Filters, ZIP Code Stores, Multi-Store Comparisons */
+        <DiscoverView
+          products={products}
+          onInspectProduct={(prod) => setSelectedProduct(prod)}
+          onCompareProduct={(grp) => setSelectedGroupedProduct(grp)}
+          isMobile={isMobileViewport}
         />
       )}
 
@@ -403,6 +434,13 @@ export const App: React.FC = () => {
         onClose={() => setSelectedProduct(null)}
         isDarkMode={isDarkMode}
         isMobile={isMobileViewport}
+      />
+
+      {/* Multi-Store Compare Offers Modal */}
+      <CompareOffersModal
+        product={selectedGroupedProduct}
+        onClose={() => setSelectedGroupedProduct(null)}
+        isDarkMode={isDarkMode}
       />
 
       {/* Watchlist & Import Modal */}
@@ -417,14 +455,17 @@ export const App: React.FC = () => {
       {/* Floating Pill-Shaped Bottom Navigation Bar (Mobile Only) */}
       {isMobileViewport && (
         <FloatingBottomNav
-          onGoToDeals={handleGoToDeals}
-          onFocusSearch={handleFocusSearch}
+          onGoToDeals={() => {
+            setAppMode("deals");
+            handleGoToDeals();
+          }}
+          onGoToDiscover={() => setAppMode("discover")}
           onOpenWatchlist={() => setIsImportModalOpen(true)}
           onRefresh={handleRefreshAll}
           isRefreshing={isRefreshing}
           isDarkMode={isDarkMode}
           onToggleTheme={toggleTheme}
-          activeTab={searchText ? "search" : "deals"}
+          activeMode={appMode}
         />
       )}
     </div>

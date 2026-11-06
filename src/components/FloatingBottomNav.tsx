@@ -1,7 +1,7 @@
 import React from "react";
 import {
   Sparkles,
-  Search,
+  Compass,
   BookmarkPlus,
   RefreshCw,
   Sun,
@@ -10,24 +10,24 @@ import {
 
 interface FloatingBottomNavProps {
   onGoToDeals: () => void;
-  onFocusSearch: () => void;
+  onGoToDiscover: () => void;
   onOpenWatchlist: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
   isDarkMode: boolean;
   onToggleTheme: () => void;
-  activeTab?: "deals" | "search" | "watchlist";
+  activeMode?: "deals" | "discover";
 }
 
 export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
   onGoToDeals,
-  onFocusSearch,
+  onGoToDiscover,
   onOpenWatchlist,
   onRefresh,
   isRefreshing,
   isDarkMode,
   onToggleTheme,
-  activeTab = "deals"
+  activeMode = "deals"
 }) => {
   return (
     <nav
@@ -39,7 +39,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
         {/* 1. Deals / Home */}
         <button
           type="button"
-          className={`floating-nav-btn ${activeTab === "deals" ? "active" : ""}`}
+          className={`floating-nav-btn ${activeMode === "deals" ? "active" : ""}`}
           onClick={onGoToDeals}
           aria-label="View all deals"
           title="Top Deals"
@@ -48,16 +48,16 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           <span className="nav-label">Deals</span>
         </button>
 
-        {/* 2. Search & Filter */}
+        {/* 2. Discover Multi-Store */}
         <button
           type="button"
-          className={`floating-nav-btn ${activeTab === "search" ? "active" : ""}`}
-          onClick={onFocusSearch}
-          aria-label="Search and filter deals"
-          title="Search"
+          className={`floating-nav-btn ${activeMode === "discover" ? "active" : ""}`}
+          onClick={onGoToDiscover}
+          aria-label="Discover multi-store categories"
+          title="Discover"
         >
-          <Search size={18} className="nav-icon" />
-          <span className="nav-label">Search</span>
+          <Compass size={18} className="nav-icon" />
+          <span className="nav-label">Discover</span>
         </button>
 
         {/* 3. Watchlist & Import */}
@@ -78,7 +78,7 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           className={`floating-nav-btn ${isRefreshing ? "refreshing" : ""}`}
           onClick={onRefresh}
           disabled={isRefreshing}
-          aria-label="Sync latest prices from CVS and Costco"
+          aria-label="Sync latest prices from retailers"
           title="Sync Now"
         >
           <RefreshCw size={17} className={`nav-icon ${isRefreshing ? "spin-icon" : ""}`} />

@@ -389,6 +389,71 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               </div>
             </div>
           </div>
+
+          {/* FSAFEDS Official Eligibility & Evidence Details */}
+          <div className="drawer-chart-card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", fontWeight: 600 }}>
+              <CheckCircle2 size={16} style={{ color: "var(--lime)" }} />
+              <span>FSAFEDS Eligibility & Verification Evidence</span>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.65rem", fontSize: "0.8rem" }}>
+              <div style={{ padding: "0.5rem 0.75rem", backgroundColor: "var(--bg-subtle)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>FSAFEDS Category</div>
+                <div style={{ fontWeight: 700, color: "var(--lavender)", marginTop: "0.15rem" }}>
+                  {product.fsafedsCategory || product.category}
+                </div>
+              </div>
+
+              <div style={{ padding: "0.5rem 0.75rem", backgroundColor: "var(--bg-subtle)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Documentation</div>
+                <div style={{ fontWeight: 600, color: "var(--text-main)", marginTop: "0.15rem" }}>
+                  {product.documentationRequirement || "None (OTC Item per CARES Act)"}
+                </div>
+              </div>
+
+              <div style={{ padding: "0.5rem 0.75rem", backgroundColor: "var(--bg-subtle)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Account Types</div>
+                <div style={{ fontWeight: 600, color: "var(--text-main)", marginTop: "0.15rem" }}>
+                  HCFSA, HSA, FSA
+                </div>
+              </div>
+
+              <div style={{ padding: "0.5rem 0.75rem", backgroundColor: "var(--bg-subtle)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+                <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 700 }}>Review Status</div>
+                <div style={{ fontWeight: 700, color: "var(--lime)", marginTop: "0.15rem", display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                  <CheckCircle2 size={12} /> {product.eligibilityReviewStatus ? product.eligibilityReviewStatus.toUpperCase() : "VERIFIED"}
+                </div>
+              </div>
+            </div>
+
+            {/* Evidence Note & Link */}
+            <div style={{ fontSize: "0.775rem", color: "var(--text-muted)", backgroundColor: "var(--bg-subtle)", padding: "0.65rem 0.85rem", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+              <div style={{ marginBottom: "0.35rem" }}>
+                <strong>Evidence:</strong> {product.eligibilityEvidenceNote || `Verified explicit FSA/HSA attribute on ${product.retailer} catalog.`}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem" }}>
+                <ExternalLink size={12} style={{ color: "var(--lavender)" }} />
+                <a
+                  href={product.eligibilityEvidenceUrl || "https://www.fsafeds.gov/explore/hcfsa/expenses"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "var(--lavender)", textDecoration: "none" }}
+                >
+                  View FSAFEDS Health Care FSA Eligible Expenses Reference
+                </a>
+              </div>
+            </div>
+
+            {/* Identifiers */}
+            {(product.upc || product.asin || product.sku) && (
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", fontSize: "0.725rem", color: "var(--text-subtle)" }}>
+                {product.upc && <span className="font-mono">UPC: {product.upc}</span>}
+                {product.asin && <span className="font-mono">ASIN: {product.asin}</span>}
+                {product.sku && <span className="font-mono">SKU: {product.sku}</span>}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Footer Actions with Pill-Shaped Buttons */}

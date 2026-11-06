@@ -93,6 +93,60 @@ async function run() {
   }
   await drawerPage.close();
 
+  // Discover & Compare Stores View (Desktop)
+  const discoverPage = await browser.newPage({
+    viewport: { width: 1440, height: 900 },
+    colorScheme: "dark"
+  });
+  await discoverPage.goto("http://localhost:5173", { waitUntil: "networkidle" });
+  await discoverPage.waitForTimeout(800);
+
+  const discoverTab = discoverPage.locator('button:has-text("Discover Stores & Compare")').first();
+  if (await discoverTab.count() > 0) {
+    await discoverTab.click();
+    await discoverPage.waitForTimeout(600);
+    const discoverFile = path.join(OUTPUT_DIR, "desktop-1440-discover.png");
+    await discoverPage.screenshot({ path: discoverFile });
+    console.log(`Saved screenshot: ${discoverFile}`);
+
+    // Click "Compare" button on first multi-store item to open CompareOffersModal
+    const compareBtn = discoverPage.locator('button:has-text("Compare (")').first();
+    if (await compareBtn.count() > 0) {
+      await compareBtn.click();
+      await discoverPage.waitForTimeout(600);
+      const compareModalFile = path.join(OUTPUT_DIR, "desktop-1440-compare-modal.png");
+      await discoverPage.screenshot({ path: compareModalFile });
+      console.log(`Saved screenshot: ${compareModalFile}`);
+    }
+  }
+  await discoverPage.close();
+
+  // Mobile Discover & Compare View (Mobile 390px)
+  const mobileDiscoverPage = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    colorScheme: "dark"
+  });
+  await mobileDiscoverPage.goto("http://localhost:5173", { waitUntil: "networkidle" });
+  await mobileDiscoverPage.waitForTimeout(800);
+  const mobileDiscoverTab = mobileDiscoverPage.locator('button:has-text("Discover")').first();
+  if (await mobileDiscoverTab.count() > 0) {
+    await mobileDiscoverTab.click();
+    await mobileDiscoverPage.waitForTimeout(500);
+    const mobDiscoverFile = path.join(OUTPUT_DIR, "mobile-390-discover.png");
+    await mobileDiscoverPage.screenshot({ path: mobDiscoverFile });
+    console.log(`Saved screenshot: ${mobDiscoverFile}`);
+
+    const mobCompareBtn = mobileDiscoverPage.locator('button:has-text("Compare (")').first();
+    if (await mobCompareBtn.count() > 0) {
+      await mobCompareBtn.click();
+      await mobileDiscoverPage.waitForTimeout(600);
+      const mobCompareModalFile = path.join(OUTPUT_DIR, "mobile-390-compare-modal.png");
+      await mobileDiscoverPage.screenshot({ path: mobCompareModalFile });
+      console.log(`Saved screenshot: ${mobCompareModalFile}`);
+    }
+  }
+  await mobileDiscoverPage.close();
+
   await browser.close();
   console.log("All screenshots captured successfully!");
 }
