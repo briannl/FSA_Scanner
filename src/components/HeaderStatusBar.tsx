@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { TrackerStatus, StructuredError } from "../types/product";
 import {
   ShieldCheck,
@@ -11,7 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
-  BookmarkCheck
+  BookmarkCheck,
+  MoreVertical,
+  Layers
 } from "lucide-react";
 import { formatSourceLabel } from "../utils/sourceTypeHelper";
 
@@ -23,6 +25,7 @@ interface HeaderStatusBarProps {
   onExportCsv: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  isMobile?: boolean;
 }
 
 /**
@@ -107,9 +110,35 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
   onOpenImportModal,
   onExportCsv,
   isDarkMode,
-  onToggleTheme
+  onToggleTheme,
+  isMobile = false
 }) => {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
+  const overflowMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close overflow menu on outside click or Escape
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) {
+        setIsOverflowOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOverflowOpen(false);
+        setShowDiagnostics(false);
+      }
+    };
+    if (isOverflowOpen) {
+      document.addEventListener("mousedown", handleOutsideClick);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOverflowOpen]);
 
   const formatTimeAgo = (isoString: string | null) => {
     if (!isoString) return "Never";
@@ -159,88 +188,167 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
             </div>
           </a>
 
-          {/* Retailer Live Heartbeat Pills */}
-          <div className="retailer-health-group">
-            <div
-              className="health-pill"
-              title={`CVS: ${status.cvs.status === "success" ? "Online" : status.cvs.status} (${status.cvs.itemCount} items)`}
-            >
-              <span className="pulsing-dot-wrap">
-                <span className={`pulsing-dot ${getHealthDotClass(status.cvs.status)}`} />
-              </span>
-              <span>CVS:</span>
-              <strong>{status.cvs.status === "success" ? "Online" : "Protected"}</strong>
-              <span style={{ opacity: 0.6 }}>•</span>
-              <span className="timestamp font-mono">
-                {formatTimeAgo(status.cvs.lastSuccess || status.cvs.lastAttempt)}
-              </span>
-              {status.cvs.lastSourceType && (
-                <span className={`source-type-pill ${status.cvs.lastSourceType}`}>
-                  {formatSourceLabel(status.cvs.lastSourceType)}
+          {/* Retailer Live Heartbeat Pills (Desktop & Tablet) */}
+          {!isMobile && (
+            <div className="retailer-health-group">
+              <div
+                className="health-pill"
+                title={`CVS: ${status.cvs.status === "success" ? "Online" : status.cvs.status} (${status.cvs.itemCount} items)`}
+              >
+                <span className="pulsing-dot-wrap">
+                  <span className={`pulsing-dot ${getHealthDotClass(status.cvs.status)}`} />
                 </span>
-              )}
-            </div>
+                <span>CVS:</span>
+                <strong>{status.cvs.status === "success" ? "Online" : "Protected"}</strong>
+                <span style={{ opacity: 0.6 }}>•</span>
+                <span className="timestamp font-mono">
+                  {formatTimeAgo(status.cvs.lastSuccess || status.cvs.lastAttempt)}
+                </span>
+                {status.cvs.lastSourceType && (
+                  <span className={`source-type-pill ${status.cvs.lastSourceType}`}>
+                    {formatSourceLabel(status.cvs.lastSourceType)}
+                  </span>
+                )}
+              </div>
 
-            <div
-              className="health-pill"
-              title={`Costco: ${status.costco.status === "success" ? "Online" : status.costco.status} (${status.costco.itemCount} items)`}
-            >
-              <span className="pulsing-dot-wrap">
-                <span className={`pulsing-dot ${getHealthDotClass(status.costco.status)}`} />
-              </span>
-              <span>Costco:</span>
-              <strong>{status.costco.status === "success" ? "Online" : "Protected"}</strong>
-              <span style={{ opacity: 0.6 }}>•</span>
-              <span className="timestamp font-mono">
-                {formatTimeAgo(status.costco.lastSuccess || status.costco.lastAttempt)}
-              </span>
-              {status.costco.lastSourceType && (
-                <span className={`source-type-pill ${status.costco.lastSourceType}`}>
-                  {formatSourceLabel(status.costco.lastSourceType)}
+              <div
+                className="health-pill"
+                title={`Costco: ${status.costco.status === "success" ? "Online" : status.costco.status} (${status.costco.itemCount} items)`}
+              >
+                <span className="pulsing-dot-wrap">
+                  <span className={`pulsing-dot ${getHealthDotClass(status.costco.status)}`} />
                 </span>
-              )}
+                <span>Costco:</span>
+                <strong>{status.costco.status === "success" ? "Online" : "Protected"}</strong>
+                <span style={{ opacity: 0.6 }}>•</span>
+                <span className="timestamp font-mono">
+                  {formatTimeAgo(status.costco.lastSuccess || status.costco.lastAttempt)}
+                </span>
+                {status.costco.lastSourceType && (
+                  <span className={`source-type-pill ${status.costco.lastSourceType}`}>
+                    {formatSourceLabel(status.costco.lastSourceType)}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls: Desktop Inline or Mobile Responsive with Overflow Menu */}
         <div className="header-actions">
+          {/* Primary Action: Sync Now */}
           <button
+            type="button"
             className="btn btn-primary"
             onClick={onRefreshAll}
             disabled={isRefreshing}
             title="Trigger on-demand retailer discovery"
           >
             <RefreshCw size={14} className={isRefreshing ? "spin-icon" : ""} />
-            <span>{isRefreshing ? "Syncing..." : "Sync Now"}</span>
+            <span>{isRefreshing ? "Syncing..." : isMobile ? "Sync" : "Sync Now"}</span>
           </button>
 
-          <button
-            className="btn btn-secondary"
-            onClick={onOpenImportModal}
-            title="Manage watchlist or import custom deals"
-          >
-            <PlusCircle size={14} />
-            <span>Watchlist / Import</span>
-          </button>
+          {/* Desktop-only secondary buttons */}
+          {!isMobile && (
+            <>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={onOpenImportModal}
+                title="Manage watchlist or import custom deals"
+              >
+                <PlusCircle size={14} />
+                <span>Watchlist / Import</span>
+              </button>
 
-          <button
-            className="btn btn-ghost"
-            onClick={onExportCsv}
-            title="Export currently filtered grid data as CSV"
-          >
-            <Download size={14} />
-            <span>Export CSV</span>
-          </button>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={onExportCsv}
+                title="Export currently filtered grid data as CSV"
+              >
+                <Download size={14} />
+                <span>Export CSV</span>
+              </button>
+            </>
+          )}
 
+          {/* Theme Toggle Button (Light/Dark) */}
           <button
+            type="button"
             className="btn btn-icon-only"
             onClick={onToggleTheme}
             title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            aria-label="Toggle color theme"
+            aria-label={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
           </button>
+
+          {/* Mobile Overflow Menu Toggle */}
+          {isMobile && (
+            <div className="overflow-menu-wrapper" ref={overflowMenuRef}>
+              <button
+                type="button"
+                className={`btn btn-icon-only ${isOverflowOpen ? "active" : ""}`}
+                onClick={() => setIsOverflowOpen((prev) => !prev)}
+                title="Open secondary menu"
+                aria-label="Open secondary navigation menu"
+                aria-expanded={isOverflowOpen}
+              >
+                <MoreVertical size={16} />
+              </button>
+
+              {/* Mobile Overflow Popover Menu */}
+              {isOverflowOpen && (
+                <div className="overflow-popover-menu" role="menu">
+                  <button
+                    type="button"
+                    className="overflow-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsOverflowOpen(false);
+                      onOpenImportModal();
+                    }}
+                  >
+                    <PlusCircle size={15} />
+                    <span>Watchlist / Import Deals</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="overflow-menu-item"
+                    role="menuitem"
+                    onClick={() => {
+                      setIsOverflowOpen(false);
+                      onExportCsv();
+                    }}
+                  >
+                    <Download size={15} />
+                    <span>Export CSV</span>
+                  </button>
+
+                  <div className="overflow-menu-divider" />
+
+                  <div className="overflow-menu-status-section">
+                    <div className="overflow-status-label">
+                      <Layers size={13} />
+                      <span>Retailer Status</span>
+                    </div>
+                    <div className="overflow-status-row">
+                      <span>CVS:</span>
+                      <strong>{status.cvs.status === "success" ? "Online" : "Protected"}</strong>
+                      <span className="font-mono text-xs">{formatTimeAgo(status.cvs.lastSuccess)}</span>
+                    </div>
+                    <div className="overflow-status-row">
+                      <span>Costco:</span>
+                      <strong>{status.costco.status === "success" ? "Online" : "Protected"}</strong>
+                      <span className="font-mono text-xs">{formatTimeAgo(status.costco.lastSuccess)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -279,7 +387,7 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
             </div>
           </div>
 
-          {/* Clean, properly padded expandable list */}
+          {/* Clean, properly padded expandable list with zero overlap */}
           {showDiagnostics && (
             <div className="diagnostics-drawer">
               <div className="diagnostics-header">

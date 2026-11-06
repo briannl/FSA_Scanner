@@ -23,6 +23,7 @@ interface ControlsBarProps {
   viewMode: "table" | "card";
   onViewModeChange: (mode: "table" | "card") => void;
   matchedCount: number;
+  isMobile?: boolean;
 }
 
 export const ControlsBar: React.FC<ControlsBarProps> = ({
@@ -40,7 +41,8 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
   onPriceDropsOnlyChange,
   viewMode,
   onViewModeChange,
-  matchedCount
+  matchedCount,
+  isMobile = false
 }) => {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -124,7 +126,7 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
             </button>
           </div>
 
-          {/* Modern Toggle Switches */}
+          {/* Modern Toggle Switches & Desktop View Mode */}
           <div className="switches-group">
             <label className="custom-switch-label" title="Show only verified discounted items">
               <input
@@ -150,32 +152,34 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
               <span>Price Drops Only</span>
             </label>
 
-            {/* View Mode Toggle */}
-            <div className="view-mode-group">
-              <button
-                type="button"
-                className={`view-mode-btn ${viewMode === "table" ? "active" : ""}`}
-                onClick={() => onViewModeChange("table")}
-                title="Table Spreadsheet View"
-                aria-label="Table view"
-              >
-                <TableIcon size={14} />
-              </button>
-              <button
-                type="button"
-                className={`view-mode-btn ${viewMode === "card" ? "active" : ""}`}
-                onClick={() => onViewModeChange("card")}
-                title="Card Grid View"
-                aria-label="Card view"
-              >
-                <LayoutGrid size={14} />
-              </button>
-            </div>
+            {/* View Mode Toggle: Displayed on Desktop & Tablet */}
+            {!isMobile && (
+              <div className="view-mode-group" role="group" aria-label="View Mode">
+                <button
+                  type="button"
+                  className={`view-mode-btn ${viewMode === "table" ? "active" : ""}`}
+                  onClick={() => onViewModeChange("table")}
+                  title="Table Spreadsheet View"
+                  aria-label="Table spreadsheet view"
+                >
+                  <TableIcon size={14} />
+                </button>
+                <button
+                  type="button"
+                  className={`view-mode-btn ${viewMode === "card" ? "active" : ""}`}
+                  onClick={() => onViewModeChange("card")}
+                  title="Card Grid View"
+                  aria-label="Card grid view"
+                >
+                  <LayoutGrid size={14} />
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
         {/* Sub-Row: Category Horizontally Scrollable Pills & Results Counter */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "1rem" }}>
+        <div className="toolbar-sub-row">
           <div className="category-scroll-bar" role="tablist" aria-label="Product Categories">
             <button
               type="button"
@@ -200,7 +204,7 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
             ))}
           </div>
 
-          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+          <div className="matched-counter-text">
             Showing <strong style={{ color: "var(--text-main)" }} className="font-mono">{matchedCount}</strong> deals
           </div>
         </div>

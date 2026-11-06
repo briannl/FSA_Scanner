@@ -30,7 +30,7 @@ import { formatSourceLabel } from "../utils/sourceTypeHelper";
 // Register Community Modules for AG Grid Community v33+
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// Customized Quartz Themes for Fintech Light & Dark Terminals
+// Customized Quartz Themes for Fintech Light & Dark Navy Terminals
 const lightGridTheme = themeQuartz.withParams({
   backgroundColor: "#ffffff",
   foregroundColor: "#0f172a",
@@ -39,31 +39,33 @@ const lightGridTheme = themeQuartz.withParams({
   borderColor: "#e2e8f0",
   rowHoverColor: "#f8fafc",
   accentColor: "#0284c7",
-  fontSize: 13,
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+  selectedRowBackgroundColor: "rgba(2, 132, 199, 0.08)",
+  headerFontSize: 12,
+  fontSize: 13
 });
 
 const darkGridTheme = themeQuartz.withParams({
-  backgroundColor: "#0f172a",
-  foregroundColor: "#f8fafc",
-  headerBackgroundColor: "#1e293b",
+  backgroundColor: "#0c1427",
+  foregroundColor: "#f1f5f9",
+  headerBackgroundColor: "#080e1c",
   headerTextColor: "#94a3b8",
-  borderColor: "#1e293b",
-  rowHoverColor: "#1e293b",
+  borderColor: "#192644",
+  rowHoverColor: "#131e38",
   accentColor: "#38bdf8",
-  fontSize: 13,
-  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+  selectedRowBackgroundColor: "rgba(56, 189, 248, 0.12)",
+  headerFontSize: 12,
+  fontSize: 13
 });
 
 interface ProductGridProps {
   products: ProductObservation[];
   quickFilterText: string;
   onSelectProduct: (product: ProductObservation) => void;
-  onGridReadyExportHook?: (exportCsvFn: () => void) => void;
+  onGridReadyExportHook?: (exportFn: () => void) => void;
   isDarkMode?: boolean;
+  isTablet?: boolean;
 }
 
-// Category fallback icon helper
 const renderCategoryFallbackIcon = (category: string) => {
   const cat = category.toLowerCase();
   if (cat.includes("diag") || cat.includes("blood") || cat.includes("pressure")) {
@@ -89,7 +91,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   quickFilterText,
   onSelectProduct,
   onGridReadyExportHook,
-  isDarkMode = false
+  isDarkMode = true,
+  isTablet = false
 }) => {
   const gridApiRef = useRef<GridApi<ProductObservation> | null>(null);
 
@@ -121,18 +124,22 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         onGridReadyExportHook(exportFilteredCsv);
       }
     },
-    [onGridReadyExportHook, exportFilteredCsv]
+    [exportFilteredCsv, onGridReadyExportHook]
   );
 
   // 6 High-Signal Composite Columns
   const columnDefs = useMemo<ColDef<ProductObservation>[]>(() => {
+    // On tablet (<1200px), do not pin left/right columns to allow natural horizontal scroll
+    const pinLeft = !isTablet ? "left" : null;
+    const pinRight = !isTablet ? "right" : null;
+
     return [
-      // 1. PRODUCT (Pinned Left, minWidth 320px)
+      // 1. PRODUCT (Dedicated Layout with Thumbnail, 2-line title ellipsis, badges)
       {
         headerName: "Product",
         field: "name",
-        pinned: "left",
-        minWidth: 340,
+        pinned: pinLeft,
+        minWidth: 320,
         flex: 2,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
@@ -147,7 +154,6 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                     alt=""
                     className="product-thumb-img"
                     onError={(e) => {
-                      // Fallback on broken image load
                       (e.target as HTMLElement).style.display = "none";
                     }}
                   />
@@ -184,11 +190,12 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         }
       },
 
-      // 2. PRICE & REFERENCE (width 150px, right-aligned)
+      // 2. PRICE & REFERENCE (width 155px, right-aligned)
       {
         headerName: "Price & Reference",
         field: "currentPrice",
         width: 155,
+        minWidth: 140,
         sortable: true,
         headerClass: "ag-right-aligned-header",
         comparator: (a: number | null, b: number | null) => {
@@ -226,18 +233,24 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         }
       },
 
-      // 3. SAVINGS (width 140px, default sort descending)
+      // 3. SAVINGS (width 140px, right-aligned, default sort descending)
       {
         headerName: "Savings",
         field: "discountPercent",
         width: 140,
-        sort: "desc", // Default sort: highest discount first
+        minWidth: 130,
+        sort: "desc",
         sortable: true,
+        headerClass: "ag-right-aligned-header",
         comparator: (a: number, b: number) => (a || 0) - (b || 0),
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
           if (!item || !item.discountPercent || item.discountPercent <= 0) {
-            return <div className="savings-composite-cell"><span style={{ color: "var(--text-subtle)" }}>—</span></div>;
+            return (
+              <div className="savings-composite-cell">
+                <span style={{ color: "var(--text-subtle)" }}>—</span>
+              </div>
+            );
           }
 
           return (
@@ -259,7 +272,8 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
       {
         headerName: "Promotion Type",
         field: "promoType",
-        width: 185,
+        width: 180,
+        minWidth: 165,
         sortable: true,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
@@ -287,10 +301,11 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         }
       },
 
-      // 5. PRICE CONTEXT (width 160px)
+      // 5. PRICE CONTEXT (width 165px)
       {
         headerName: "Price Context",
         width: 165,
+        minWidth: 150,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
           if (!item) return null;
@@ -331,11 +346,12 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         }
       },
 
-      // 6. ACTIONS (Pinned Right, width 110px)
+      // 6. ACTIONS (Inspect & Buy buttons fully visible with 155px width)
       {
         headerName: "Actions",
-        pinned: "right",
-        width: 125,
+        pinned: pinRight,
+        width: 155,
+        minWidth: 145,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
           if (!item) return null;
@@ -368,7 +384,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         }
       }
     ];
-  }, [onSelectProduct]);
+  }, [onSelectProduct, isTablet]);
 
   const defaultColDef = useMemo<ColDef>(() => {
     return {
@@ -395,10 +411,10 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
           columnDefs={columnDefs}
           defaultColDef={defaultColDef}
           quickFilterText={quickFilterText}
-          rowSelection={{ mode: "singleRow", enableClickSelection: true }}
+          rowSelection={{ mode: "singleRow", enableClickSelection: true, checkboxes: false }}
           onRowSelected={onRowSelected}
           onGridReady={onGridReady}
-          rowHeight={56}
+          rowHeight={76}
           animateRows={true}
           pagination={true}
           paginationPageSize={20}

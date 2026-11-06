@@ -73,7 +73,7 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
               role="button"
               tabIndex={0}
             >
-              {/* Top Row: Thumbnail + Title + Retailer Badge */}
+              {/* Top Row: Thumbnail + Info */}
               <div className="mobile-card-top">
                 <div className="product-thumb-box" style={{ width: 48, height: 48 }}>
                   {item.imageUrl ? (
@@ -91,38 +91,31 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                 </div>
 
                 <div className="mobile-card-info">
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.25rem" }}>
+                  <div className="mobile-card-tags">
                     <span className={`retailer-pill ${item.retailer.toLowerCase()}`}>
                       {item.retailer}
                     </span>
-                    <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                    <span className="mobile-category-tag">
                       {item.category}
                     </span>
                     <span className={`source-type-pill ${item.sourceType}`}>
                       {formatSourceLabel(item.sourceType)}
                     </span>
                     {item.fsaEligible && (
-                      <span className="fsa-check-badge" style={{ marginLeft: "auto" }}>
+                      <span className="fsa-check-badge">
                         <CheckCircle2 size={11} /> FSA
                       </span>
                     )}
                   </div>
 
-                  <h3
-                    style={{
-                      fontSize: "0.875rem",
-                      fontWeight: 600,
-                      lineHeight: 1.3,
-                      color: "var(--text-main)"
-                    }}
-                  >
+                  <h3 className="mobile-product-title" title={item.name}>
                     {item.name}
                   </h3>
                 </div>
               </div>
 
               {/* Signals and Promo Details */}
-              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap", fontSize: "0.75rem" }}>
+              <div className="mobile-card-signals">
                 <span className={`promo-semantic-badge ${item.promoType === "Costco Instant Savings" ? "instant" : item.promoType === "Standard Markdown" ? "markdown" : item.promoType === "CVS Promo" ? "cvs" : item.promoType === "Multi-Buy" ? "multibuy" : item.promoType === "Coupon Only" ? "coupon" : "none"}`}>
                   {item.promoType}
                 </span>
@@ -140,7 +133,7 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                 )}
 
                 {item.promoDetails && (
-                  <span style={{ color: "var(--text-muted)", fontSize: "0.725rem", width: "100%", marginTop: "2px" }}>
+                  <span className="mobile-promo-details">
                     {item.promoDetails}
                   </span>
                 )}
@@ -148,14 +141,19 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
 
               {/* Pricing & Quick CTAs */}
               <div className="mobile-card-pricing-row">
-                <div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
-                    <span className="price-current-bold" style={{ fontSize: "1.1rem" }}>
+                <div className="mobile-pricing-left">
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <span className="price-current-bold" style={{ fontSize: "1.15rem" }}>
                       {item.currentPrice !== null ? `$${item.currentPrice.toFixed(2)}` : "Uncertain"}
                     </span>
                     {item.regularPrice && item.regularPrice > (item.currentPrice || 0) && (
                       <span className="price-regular-strike">
                         ${item.regularPrice.toFixed(2)}
+                      </span>
+                    )}
+                    {item.discountPercent > 0 && (
+                      <span className="savings-badge-pill">
+                        -{item.discountPercent.toFixed(1)}%
                       </span>
                     )}
                   </div>
@@ -164,34 +162,29 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                   )}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                  {item.discountPercent > 0 && (
-                    <span className="savings-badge-pill" style={{ fontSize: "0.85rem", padding: "0.2rem 0.5rem" }}>
-                      -{item.discountPercent.toFixed(1)}%
-                    </span>
-                  )}
-
+                <div className="mobile-card-actions">
                   <button
                     type="button"
-                    className="btn btn-secondary"
-                    style={{ padding: "0.35rem 0.65rem", fontSize: "0.75rem" }}
+                    className="btn btn-secondary mobile-action-btn"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectProduct(item);
                     }}
+                    aria-label={`Inspect ${item.name}`}
                   >
-                    <LineChart size={13} />
-                    <span>History</span>
+                    <LineChart size={14} />
+                    <span>Inspect</span>
                   </button>
 
                   <a
                     href={item.productUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn btn-primary"
-                    style={{ padding: "0.35rem 0.65rem", fontSize: "0.75rem" }}
+                    className="btn btn-primary mobile-action-btn"
                     onClick={(e) => e.stopPropagation()}
+                    aria-label={`Buy ${item.name}`}
                   >
+                    <span>Buy</span>
                     <ExternalLink size={12} />
                   </a>
                 </div>
