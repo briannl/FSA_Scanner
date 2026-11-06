@@ -1,8 +1,8 @@
-# Personal FSA Deal Tracker
+# FSA Scanner
 
-A production-ready, full-stack personal deal intelligence system that discovers, monitors, and tracks genuine discounts on FSA/HSA-eligible health products from **CVS** and **Costco**.
+A production-ready in-store barcode scanner and personal deal intelligence system that checks physical product eligibility under IRS Section 213(d) / CARES Act Section 3702, discovers retail discounts, and monitors FSA/HSA-eligible health products across **CVS**, **Costco**, **Amazon**, **Ralphs**, **Vons**, and **Instacart**.
 
-![FSA Tracker Banner](https://img.shields.io/badge/FSA%2FHSA-Eligible_Deals-0284c7?style=for-the-badge)
+![FSA Scanner Banner](https://img.shields.io/badge/FSA%2FHSA-In--Store_Scanner-0284c7?style=for-the-badge)
 ![React 18](https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react)
 ![AG Grid Community v33](https://img.shields.io/badge/AG_Grid-v33-red?style=for-the-badge)
 ![Playwright](https://img.shields.io/badge/Playwright-Automated_Collector-45ba4b?style=for-the-badge&logo=playwright)
@@ -85,7 +85,7 @@ To solve retailer anti-bot protections (Akamai Bot Manager and Cloudflare rate-l
 - Pushes verified product snapshots and diagnostic status directly into the Netlify Blobs store via `/api/refresh`.
 
 #### How to Trigger Manually in the GitHub UI:
-1. Navigate to your repository on GitHub: `https://github.com/briannl/FSA_Tracker`.
+1. Navigate to your repository on GitHub: `https://github.com/briannl/FSA_Scanner`.
 2. Click the **Actions** tab at the top.
 3. In the left sidebar, select **"Automated FSA Deal Discovery & Sync"**.
 4. Click the **"Run workflow"** button on the right, select branch `main`, and click the green **"Run workflow"** button.

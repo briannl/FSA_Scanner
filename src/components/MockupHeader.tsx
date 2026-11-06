@@ -36,7 +36,7 @@ export const MockupHeader: React.FC<MockupHeaderProps> = ({
               <ScanBarcode size={21} className="mockup-header-icon" strokeWidth={2.4} />
             </div>
             <div className="mockup-header-titles">
-              <h1 className="mockup-app-title">FSA Tracker</h1>
+              <h1 className="mockup-app-title">FSA Scanner</h1>
               <p className="mockup-app-subtitle">{subtitle}</p>
             </div>
           </div>
