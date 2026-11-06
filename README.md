@@ -163,7 +163,7 @@ The local Git repository is initialized on branch `main` with clean, atomic comm
 Run these 3 commands in your terminal to link and push to your GitHub account:
 
 ```bash
-git remote add origin https://github.com/<YOUR-GITHUB-USERNAME>/fsa-deal-tracker.git
+git remote add origin https://github.com/briannl/FSA_Tracker.git
 git branch -M main
 git push -u origin main
 ```
@@ -176,12 +176,12 @@ git push -u origin main
 1. Push your repository to GitHub using the 3 commands above.
 2. Log in to [Netlify](https://app.netlify.com).
 3. Click **Add new site** > **Import an existing project** > **GitHub**.
-4. Select `fsa-deal-tracker`.
+4. Select `FSA_Tracker`.
 5. Netlify will automatically detect `netlify.toml`:
    - **Build command**: `npm run build`
    - **Publish directory**: `dist`
    - **Functions directory**: `netlify/functions`
-6. Click **Deploy fsa-deal-tracker**.
+6. Click **Deploy FSA_Tracker**.
 
 ### Option B: Deploy via Netlify CLI
 ```bash
