@@ -16,6 +16,7 @@ import {
   Eye,
   Bandage
 } from "lucide-react";
+import { formatSourceLabel } from "../utils/sourceTypeHelper";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -232,9 +233,11 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               <span className="drawer-stat-value font-mono" style={{ fontSize: "0.95rem" }}>
                 {product.observedAt ? product.observedAt.slice(0, 10) : "Today"}
               </span>
-              <span style={{ fontSize: "0.725rem", color: "var(--text-muted)" }}>
-                {product.sourceType}
-              </span>
+              <div style={{ marginTop: "0.25rem" }}>
+                <span className={`source-type-pill ${product.sourceType}`}>
+                  {formatSourceLabel(product.sourceType)}
+                </span>
+              </div>
             </div>
           </div>
 

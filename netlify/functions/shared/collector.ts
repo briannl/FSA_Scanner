@@ -3,6 +3,7 @@ import {
   PricePoint,
   TrackerStatus,
   Retailer,
+  RetailerStatus,
   ProductsApiResponse
 } from "../../../src/types/product";
 import {
@@ -132,6 +133,7 @@ export async function runCollection(options: RefreshOptions = {}): Promise<Track
 
         const merged: ProductObservation = {
           ...fresh,
+          sourceType: "netlify-cron",
           isRecentDrop: Boolean(isRecentDrop),
           lowestHistoricalPrice: lowestHistorical,
           observedAt: now
@@ -161,12 +163,113 @@ export async function runCollection(options: RefreshOptions = {}): Promise<Track
       currentStatus[statusKey].errorMessage = null;
       currentStatus[statusKey].diagnosticDetails = null;
       currentStatus[statusKey].structuredErrors = [];
+      currentStatus[statusKey].lastSourceType = "netlify-cron";
     } catch (err: any) {
       currentStatus[statusKey].status = "error";
       currentStatus[statusKey].errorMessage = err.message || "Unknown error during collection";
       console.error(`[${retailer}] Unhandled error:`, err);
     }
   }
+
+  currentStatus.updatedAt = now;
+  await updateTrackerStatus(currentStatus);
+  return currentStatus;
+}
+
+/**
+ * Securely ingests external scraped products (from GitHub Actions or local Playwright),
+ * deduplicating against existing Netlify Blobs snapshot, updating append-only price history,
+ * recalculating lowestHistoricalPrice & isRecentDrop, and protecting valid snapshots if empty.
+ */
+export async function ingestScrapedProducts(
+  retailer: Retailer,
+  products: ProductObservation[],
+  incomingStatus?: Partial<RetailerStatus>
+): Promise<TrackerStatus> {
+  const statusKey = retailer.toLowerCase() as "cvs" | "costco";
+  const currentStatus = await getTrackerStatus();
+  const now = new Date().toISOString();
+
+  currentStatus[statusKey].lastAttempt = now;
+
+  // RULE 4: If empty products array or failure, preserve existing valid snapshot!
+  if (!products || products.length === 0) {
+    console.warn(`[${retailer}] Ingest received 0 products: Preserving existing valid snapshot.`);
+    if (incomingStatus) {
+      if (incomingStatus.status) currentStatus[statusKey].status = incomingStatus.status;
+      if (incomingStatus.errorMessage) currentStatus[statusKey].errorMessage = incomingStatus.errorMessage;
+      if (incomingStatus.diagnosticDetails) currentStatus[statusKey].diagnosticDetails = incomingStatus.diagnosticDetails;
+      if (incomingStatus.structuredErrors) currentStatus[statusKey].structuredErrors = incomingStatus.structuredErrors;
+      if (incomingStatus.lastSourceType) currentStatus[statusKey].lastSourceType = incomingStatus.lastSourceType;
+    } else {
+      currentStatus[statusKey].status = "error";
+      currentStatus[statusKey].errorMessage = "Ingest received 0 items.";
+    }
+    currentStatus.updatedAt = now;
+    await updateTrackerStatus(currentStatus);
+    return currentStatus;
+  }
+
+  // Deduplicate and merge against existing snapshot
+  const existingSnapshot = await getRetailerSnapshot(retailer);
+  const existingMap = new Map<string, ProductObservation>(
+    existingSnapshot.map((p) => [p.id, p])
+  );
+
+  for (const fresh of products) {
+    const prev = existingMap.get(fresh.id);
+    const history = await getProductHistory(fresh.id);
+
+    // 1. Append new point to append-only history (Rule 2)
+    const observationDate = (fresh.observedAt || now).slice(0, 10);
+    const newPoint: PricePoint = {
+      date: observationDate,
+      price: fresh.currentPrice,
+      priceStatus: fresh.priceStatus,
+      promoType: fresh.promoType,
+      promoDetails: fresh.promoDetails
+    };
+    await appendProductHistory(fresh.id, newPoint);
+
+    // 2. Accurate price drop comparison
+    const isRecentDrop =
+      prev &&
+      prev.currentPrice !== null &&
+      fresh.currentPrice !== null &&
+      fresh.currentPrice < prev.currentPrice;
+
+    // 3. Accurate lowestHistoricalPrice comparison
+    const allHistoricalPrices = history
+      .map((h) => h.price)
+      .filter((p): p is number => p !== null);
+    if (fresh.currentPrice !== null) {
+      allHistoricalPrices.push(fresh.currentPrice);
+    }
+    const lowestHistorical =
+      allHistoricalPrices.length > 0 ? Math.min(...allHistoricalPrices) : fresh.currentPrice;
+
+    const merged: ProductObservation = {
+      ...fresh,
+      isRecentDrop: Boolean(isRecentDrop),
+      lowestHistoricalPrice: lowestHistorical,
+      observedAt: fresh.observedAt || now
+    };
+
+    existingMap.set(fresh.id, merged);
+  }
+
+  const updatedSnapshotList = Array.from(existingMap.values());
+  // Save merged snapshot (Rule 1 & Rule 4)
+  await saveRetailerSnapshot(retailer, updatedSnapshotList);
+
+  currentStatus[statusKey].status = incomingStatus?.status || "success";
+  currentStatus[statusKey].lastSuccess = now;
+  currentStatus[statusKey].itemCount = updatedSnapshotList.length;
+  currentStatus[statusKey].errorMessage = incomingStatus?.errorMessage || null;
+  currentStatus[statusKey].diagnosticDetails = incomingStatus?.diagnosticDetails || null;
+  currentStatus[statusKey].structuredErrors = incomingStatus?.structuredErrors || [];
+  currentStatus[statusKey].lastSourceType =
+    products[0]?.sourceType || incomingStatus?.lastSourceType || "github-actions";
 
   currentStatus.updatedAt = now;
   await updateTrackerStatus(currentStatus);

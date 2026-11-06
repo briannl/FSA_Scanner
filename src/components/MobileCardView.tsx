@@ -13,6 +13,7 @@ import {
   Eye,
   Bandage
 } from "lucide-react";
+import { formatSourceLabel } from "../utils/sourceTypeHelper";
 
 interface MobileCardViewProps {
   products: ProductObservation[];
@@ -96,6 +97,9 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                     </span>
                     <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
                       {item.category}
+                    </span>
+                    <span className={`source-type-pill ${item.sourceType}`}>
+                      {formatSourceLabel(item.sourceType)}
                     </span>
                     {item.fsaEligible && (
                       <span className="fsa-check-badge" style={{ marginLeft: "auto" }}>

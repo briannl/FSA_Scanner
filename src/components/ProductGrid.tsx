@@ -25,6 +25,7 @@ import {
   Eye,
   Bandage
 } from "lucide-react";
+import { formatSourceLabel } from "../utils/sourceTypeHelper";
 
 // Register Community Modules for AG Grid Community v33+
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -165,6 +166,9 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                   </span>
                   <span>•</span>
                   <span>{item.size || item.category}</span>
+                  <span className={`source-type-pill ${item.sourceType}`}>
+                    {formatSourceLabel(item.sourceType)}
+                  </span>
                   {item.fsaEligible && (
                     <>
                       <span>•</span>

@@ -13,6 +13,7 @@ import {
   ExternalLink,
   BookmarkCheck
 } from "lucide-react";
+import { formatSourceLabel } from "../utils/sourceTypeHelper";
 
 interface HeaderStatusBarProps {
   status: TrackerStatus;
@@ -173,6 +174,11 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
               <span className="timestamp font-mono">
                 {formatTimeAgo(status.cvs.lastSuccess || status.cvs.lastAttempt)}
               </span>
+              {status.cvs.lastSourceType && (
+                <span className={`source-type-pill ${status.cvs.lastSourceType}`}>
+                  {formatSourceLabel(status.cvs.lastSourceType)}
+                </span>
+              )}
             </div>
 
             <div
@@ -188,6 +194,11 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
               <span className="timestamp font-mono">
                 {formatTimeAgo(status.costco.lastSuccess || status.costco.lastAttempt)}
               </span>
+              {status.costco.lastSourceType && (
+                <span className={`source-type-pill ${status.costco.lastSourceType}`}>
+                  {formatSourceLabel(status.costco.lastSourceType)}
+                </span>
+              )}
             </div>
           </div>
         </div>

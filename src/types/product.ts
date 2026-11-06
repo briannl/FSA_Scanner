@@ -14,7 +14,11 @@ export type SourceType =
   | "catalog-api"
   | "watchlist-page"
   | "manual-import"
-  | "fixture";
+  | "fixture"
+  | "github-actions"
+  | "local-playwright"
+  | "bookmarklet"
+  | "netlify-cron";
 
 export interface ProductObservation {
   id: string; // Stable retailer identifier (e.g., "cvs-123456" or "costco-789012")
@@ -70,6 +74,7 @@ export interface RetailerStatus {
   errorMessage: string | null;
   diagnosticDetails?: string | null;
   structuredErrors?: StructuredError[];
+  lastSourceType?: SourceType;
 }
 
 export interface TrackerStatus {
