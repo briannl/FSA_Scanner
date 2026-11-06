@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ProductObservation } from "../types/product";
 import { ProductCard } from "./ProductCard";
 import {
@@ -7,8 +7,17 @@ import {
   PlusCircle,
   ExternalLink,
   Sparkles,
-  Link as LinkIcon
+  Link as LinkIcon,
+  ScanBarcode,
+  Tag,
+  Trash2,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  HelpCircle
 } from "lucide-react";
+import { ScanHistoryService } from "../services/ScanHistoryService";
+import { ScanHistoryItem } from "../types/scanner";
 
 interface SavedViewProps {
   products: ProductObservation[];
@@ -21,6 +30,8 @@ interface SavedViewProps {
   onExportCsv: () => void;
   watchlistUrls: string[];
   onAddWatchlistUrl: (url: string) => void;
+  onInspectScannedProduct?: (item: ScanHistoryItem) => void;
+  onGoToScan?: () => void;
 }
 
 export const SavedView: React.FC<SavedViewProps> = ({
@@ -33,12 +44,24 @@ export const SavedView: React.FC<SavedViewProps> = ({
   onOpenImportModal,
   onExportCsv,
   watchlistUrls,
-  onAddWatchlistUrl
+  onAddWatchlistUrl,
+  onInspectScannedProduct,
+  onGoToScan
 }) => {
+  const [activeSubTab, setActiveSubTab] = useState<"scans" | "deals">("scans");
   const [newUrl, setNewUrl] = useState("");
   const [showWatchlist, setShowWatchlist] = useState(false);
+  const [savedScans, setSavedScans] = useState<ScanHistoryItem[]>([]);
 
-  // Match saved products
+  const loadSavedScans = () => {
+    setSavedScans(ScanHistoryService.getSaved());
+  };
+
+  useEffect(() => {
+    loadSavedScans();
+  }, []);
+
+  // Match saved deals
   const savedProducts = products.filter((p) => savedIds.includes(p.id));
 
   const handleAddUrl = (e: React.FormEvent) => {
@@ -49,78 +72,212 @@ export const SavedView: React.FC<SavedViewProps> = ({
     }
   };
 
+  const handleDeleteSavedScan = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    ScanHistoryService.toggleFavorite(id);
+    loadSavedScans();
+  };
+
+  const handleExportScansCsv = () => {
+    ScanHistoryService.exportCsv();
+  };
+
+  const renderStatusBadge = (status: string) => {
+    switch (status) {
+      case "Verified eligible":
+        return (
+          <span className="editorial-badge-discount inline-flex items-center gap-1">
+            <CheckCircle2 size={11} /> Eligible
+          </span>
+        );
+      case "Likely eligible — verify":
+        return (
+          <span className="editorial-badge-retailer inline-flex items-center gap-1 text-blue-300">
+            Likely Eligible
+          </span>
+        );
+      case "Requires documentation":
+        return (
+          <span className="editorial-badge-retailer inline-flex items-center gap-1 text-amber-300">
+            <AlertTriangle size={11} /> Needs LMN
+          </span>
+        );
+      case "Not eligible":
+        return (
+          <span className="editorial-badge-retailer inline-flex items-center gap-1 text-rose-300">
+            <XCircle size={11} /> Not Eligible
+          </span>
+        );
+      default:
+        return (
+          <span className="editorial-badge-retailer inline-flex items-center gap-1 text-slate-400">
+            <HelpCircle size={11} /> Unverified
+          </span>
+        );
+    }
+  };
+
   return (
-    <div className="saved-container" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 1.25rem 2.5rem 1.25rem" }}>
-      {/* Header bar */}
-      <div className="saved-header-row">
-        <div>
-          <h2 className="saved-title">Saved Deals</h2>
-          <p className="saved-subtitle">
-            {savedProducts.length} {savedProducts.length === 1 ? "deal" : "deals"} bookmarked for price monitoring
-          </p>
-        </div>
-
-        <div className="saved-actions-group">
-          {savedProducts.length > 0 && (
-            <button
-              type="button"
-              className="btn btn-ghost font-sans"
-              onClick={onClearSaved}
-              style={{ fontSize: "0.8rem", padding: "0.4rem 0.75rem", borderRadius: "var(--radius-pill)" }}
-            >
-              Clear All
-            </button>
-          )}
-
+    <div className="saved-container" style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 1.25rem 3.5rem 1.25rem" }}>
+      {/* Sub-tab Navigation */}
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="saved-subtabs-group">
           <button
             type="button"
-            className="btn btn-secondary font-sans"
-            onClick={onExportCsv}
-            title="Export saved products to CSV"
-            style={{ fontSize: "0.8rem", padding: "0.4rem 0.85rem", borderRadius: "var(--radius-pill)" }}
+            className={`saved-subtab-btn ${activeSubTab === "scans" ? "active" : ""}`}
+            onClick={() => setActiveSubTab("scans")}
           >
-            <Download size={13} />
-            <span>Export CSV</span>
+            <ScanBarcode size={14} />
+            <span>In-Store Scans ({savedScans.length})</span>
           </button>
+          <button
+            type="button"
+            className={`saved-subtab-btn ${activeSubTab === "deals" ? "active" : ""}`}
+            onClick={() => setActiveSubTab("deals")}
+          >
+            <Tag size={14} />
+            <span>Online Deals ({savedProducts.length})</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {activeSubTab === "scans" ? (
+            <button
+              type="button"
+              className="editorial-action-chip"
+              onClick={handleExportScansCsv}
+            >
+              <Download size={13} /> Export Scans CSV
+            </button>
+          ) : (
+            <>
+              {savedProducts.length > 0 && (
+                <button
+                  type="button"
+                  className="editorial-action-chip text-rose-400"
+                  onClick={onClearSaved}
+                  title="Clear all saved deals"
+                >
+                  <Trash2 size={13} /> Clear Deals
+                </button>
+              )}
+              <button
+                type="button"
+                className="editorial-action-chip"
+                onClick={onExportCsv}
+              >
+                <Download size={13} /> Export Deals CSV
+              </button>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Main Content: Saved Cards or Empty State */}
-      {savedProducts.length === 0 ? (
-        <div className="saved-empty-card">
-          <div className="saved-empty-icon-box">
-            <Bookmark size={32} stroke="var(--lavender)" />
-          </div>
-          <h3 className="saved-empty-heading">No saved deals yet</h3>
-          <p className="saved-empty-desc">
-            Tap the bookmark icon on any item in <strong>Deals</strong> or <strong>Discover</strong> to keep track of its price history and alerts here.
-          </p>
-          <button
-            type="button"
-            className="btn btn-primary font-sans"
-            onClick={onGoToDeals}
-            style={{ borderRadius: "var(--radius-pill)", padding: "0.6rem 1.4rem", fontWeight: 700 }}
-          >
-            <Sparkles size={15} />
-            <span>Explore Active Deals</span>
-          </button>
+      {/* Main Content Area */}
+      {activeSubTab === "scans" ? (
+        /* 1. Saved In-Store Scans */
+        <div>
+          {savedScans.length === 0 ? (
+            <div className="saved-empty-card">
+              <div className="saved-empty-icon-box">
+                <ScanBarcode size={32} stroke="var(--lavender)" />
+              </div>
+              <h3 className="saved-empty-heading">No saved in-store scans</h3>
+              <p className="saved-empty-desc">
+                When you scan a product in-store and tap <strong>Save Item</strong>, it will appear here with its full FSA eligibility determination and proof.
+              </p>
+              {onGoToScan && (
+                <button
+                  type="button"
+                  className="editorial-primary-btn"
+                  onClick={onGoToScan}
+                >
+                  <ScanBarcode size={16} />
+                  <span>Start Scanning Products</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="recent-scans-list">
+              {savedScans.map((item) => (
+                <div
+                  key={item.id}
+                  className="recent-scan-item-card"
+                  onClick={() => onInspectScannedProduct && onInspectScannedProduct(item)}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <div className="flex-1 min-w-0 pr-3">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      {renderStatusBadge(item.eligibilityStatus)}
+                      {item.storeName && (
+                        <span className="text-xs text-muted">@ {item.storeName}</span>
+                      )}
+                      {item.price != null && (
+                        <span className="text-xs font-mono font-bold text-white">
+                          ${item.price.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="recent-scan-name">{item.name}</h4>
+                    <p className="text-xs text-muted mt-1">
+                      UPC: {item.barcode} • {item.category} • Saved on {new Date(item.scannedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="p-2 text-muted hover:text-rose-400 transition-colors"
+                    onClick={(e) => handleDeleteSavedScan(e, item.id)}
+                    title="Remove from saved"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
-        <div className="mobile-cards-grid" style={{ marginBottom: "2rem" }}>
-          {savedProducts.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              isSaved={true}
-              onToggleSave={onToggleSave}
-              onSelectProduct={onSelectProduct}
-            />
-          ))}
+        /* 2. Saved Deals & Bookmarked Products */
+        <div>
+          {savedProducts.length === 0 ? (
+            <div className="saved-empty-card">
+              <div className="saved-empty-icon-box">
+                <Bookmark size={32} stroke="var(--lavender)" />
+              </div>
+              <h3 className="saved-empty-heading">No saved deals yet</h3>
+              <p className="saved-empty-desc">
+                Tap the bookmark icon on any item in <strong>Deals</strong> to keep track of its price history and alerts here.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary font-sans"
+                onClick={onGoToDeals}
+                style={{ borderRadius: "var(--radius-pill)", padding: "0.6rem 1.4rem", fontWeight: 700 }}
+              >
+                <Sparkles size={15} />
+                <span>Explore Active Deals</span>
+              </button>
+            </div>
+          ) : (
+            <div className="mobile-cards-grid" style={{ marginBottom: "2rem" }}>
+              {savedProducts.map((p) => (
+                <ProductCard
+                  key={p.id}
+                  product={p}
+                  isSaved={true}
+                  onToggleSave={onToggleSave}
+                  onSelectProduct={onSelectProduct}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Watchlist URLs & Manual Import Section */}
-      <div className="saved-watchlist-card">
+      {/* 3. Watchlist URLs Section */}
+      <div className="saved-watchlist-card mt-6">
         <div
           style={{
             display: "flex",
@@ -150,7 +307,7 @@ export const SavedView: React.FC<SavedViewProps> = ({
         {showWatchlist && (
           <div style={{ marginTop: "1rem", borderTop: "1px solid var(--border-subtle)", paddingTop: "1rem" }}>
             <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
-              URLs monitored on a scheduled basis by the backend scraper and Playwright bot:
+              URLs monitored by the backend scraper and Playwright bot:
             </p>
 
             <form onSubmit={handleAddUrl} style={{ display: "flex", gap: "0.5rem", marginBottom: "1rem" }}>

@@ -1,0 +1,25 @@
+{
+  "name": "FSA Tracker — In-Store Barcode Scanner",
+  "short_name": "FSA Scanner",
+  "description": "Instant in-store barcode scanner and FSA/HSA eligibility checker for CVS, Costco, Walgreens, Target & Walmart.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#090B0D",
+  "theme_color": "#090B0D",
+  "categories": ["shopping", "health", "finance"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

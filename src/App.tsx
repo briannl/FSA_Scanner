@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { MockupHeader } from "./components/MockupHeader";
+import { ScannerHome } from "./components/ScannerHome";
 import { EditorialHomepage } from "./components/EditorialHomepage";
 import { DiscoverView } from "./components/DiscoverView";
 import { SavedView } from "./components/SavedView";
-import { InsightsView } from "./components/InsightsView";
 import { FloatingBottomNav, NavTab } from "./components/FloatingBottomNav";
 import { ProductDetailDrawer } from "./components/ProductDetailDrawer";
 import { WatchlistImportModal } from "./components/WatchlistImportModal";
 import { CompareOffersModal } from "./components/CompareOffersModal";
+import { BarcodeScannerModal } from "./components/BarcodeScannerModal";
+import { ManualBarcodeEntryModal } from "./components/ManualBarcodeEntryModal";
+import { ManualProductIdentificationModal } from "./components/ManualProductIdentificationModal";
+import { ScanResultModal } from "./components/ScanResultModal";
 import { GroupedProduct } from "./services/productMatcher";
 import { useSavedDeals } from "./hooks/useSavedDeals";
 import {
@@ -20,6 +24,15 @@ import {
   SEED_PRICE_HISTORIES,
   INITIAL_STATUS
 } from "./data/seedData";
+import { ScannedProduct } from "./types/scanner";
+import { ProductLookupService } from "./services/ProductLookupService";
+import {
+  buildScannedProduct,
+  EvaluationInput
+} from "./services/FSAEligibilityEngine";
+import { ScanHistoryService } from "./services/ScanHistoryService";
+import { normalizeBarcode } from "./utils/barcodeUtils";
+import { WifiOff } from "lucide-react";
 
 export const App: React.FC = () => {
   const [products, setProducts] = useState<ProductObservation[]>(SEED_PRODUCTS);
@@ -61,16 +74,38 @@ export const App: React.FC = () => {
   }, []);
 
   const isMobileViewport = windowWidth < 768;
-  const isTabletViewport = windowWidth >= 768 && windowWidth < 1200;
 
-  // 4 Primary Navigation Destinations: "discover" | "search" | "saved" | "insights"
-  const [activeTab, setActiveTab] = useState<NavTab>("discover");
+  // Offline network status tracking
+  const [isOffline, setIsOffline] = useState<boolean>(() => {
+    return typeof navigator !== "undefined" ? !navigator.onLine : false;
+  });
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // 4 Primary Navigation Destinations: "scan" | "search" | "saved" | "deals"
+  // Scan is the default homepage as requested
+  const [activeTab, setActiveTab] = useState<NavTab>("scan");
   const [selectedGroupedProduct, setSelectedGroupedProduct] = useState<GroupedProduct | null>(null);
 
-  // Selection & Modal state
+  // Selection & Modal states
   const [selectedProduct, setSelectedProduct] = useState<ProductObservation | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Scanner Modals State
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [isManualBarcodeOpen, setIsManualBarcodeOpen] = useState(false);
+  const [unidentifiedBarcode, setUnidentifiedBarcode] = useState<string | null>(null);
+  const [scannedProductResult, setScannedProductResult] = useState<ScannedProduct | null>(null);
 
   // Load data from /api/products
   const loadData = useCallback(async () => {
@@ -100,6 +135,62 @@ export const App: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // Handle scanned or entered barcode
+  const handleBarcodeDetected = async (rawBarcode: string) => {
+    const barcode = normalizeBarcode(rawBarcode);
+    if (!barcode) return;
+
+    // 1. Perform modular product lookup
+    const lookupResult = await ProductLookupService.lookupByBarcode(barcode, products);
+
+    if (lookupResult) {
+      // Product recognized: evaluate FSA eligibility
+      const scanned = buildScannedProduct({
+        barcode,
+        name: lookupResult.name,
+        brand: lookupResult.brand,
+        category: lookupResult.category,
+        ingredientsText: lookupResult.ingredientsText,
+        imageUrl: lookupResult.imageUrl,
+        matchingDealsCatalog: products
+      });
+
+      // Add to local scan history
+      ScanHistoryService.addToHistory(scanned);
+
+      // Show result
+      setIsScannerOpen(false);
+      setIsManualBarcodeOpen(false);
+      setScannedProductResult(scanned);
+    } else {
+      // Product not found: allow user to identify product without fabricating
+      setIsScannerOpen(false);
+      setIsManualBarcodeOpen(false);
+      setUnidentifiedBarcode(barcode);
+    }
+  };
+
+  // Handle manual product identification submission
+  const handleManualIdentificationSubmit = (
+    data: EvaluationInput & { labelPhoto?: string | null }
+  ) => {
+    const scanned = buildScannedProduct({
+      ...data,
+      matchingDealsCatalog: products
+    });
+
+    if (data.labelPhoto) {
+      scanned.userAddedLabelPhoto = data.labelPhoto;
+    }
+
+    // Add to history
+    ScanHistoryService.addToHistory(scanned, data.storeName, data.price);
+
+    // Show result
+    setUnidentifiedBarcode(null);
+    setScannedProductResult(scanned);
+  };
+
   // Trigger on-demand sync
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
@@ -111,24 +202,6 @@ export const App: React.FC = () => {
       });
       if (res.ok) {
         await loadData();
-      } else {
-        const now = new Date().toISOString();
-        setStatus((prev) => ({
-          ...prev,
-          cvs: {
-            ...prev.cvs,
-            status: "blocked_waf",
-            lastAttempt: now,
-            errorMessage: "HTTP 403: Bot protection active. Snapshot retained."
-          },
-          costco: {
-            ...prev.costco,
-            status: "blocked_waf",
-            lastAttempt: now,
-            errorMessage: "HTTP 403: Bot protection active. Snapshot retained."
-          },
-          updatedAt: now
-        }));
       }
     } catch {
       console.warn("Refresh request could not reach server; retaining snapshots.");
@@ -185,7 +258,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // CSV Export
+  // CSV Export for deals
   const handleExportCsv = () => {
     const headers = [
       "Retailer",
@@ -194,10 +267,6 @@ export const App: React.FC = () => {
       "Current Price",
       "Regular Price",
       "Discount %",
-      "Discount $",
-      "Unit Price",
-      "Promo Type",
-      "Promo Details",
       "Product URL"
     ];
     const sourceProducts = activeTab === "saved"
@@ -211,10 +280,6 @@ export const App: React.FC = () => {
       p.currentPrice !== null ? p.currentPrice.toFixed(2) : "",
       p.regularPrice !== null ? p.regularPrice.toFixed(2) : "",
       p.discountPercent > 0 ? `${p.discountPercent}%` : "",
-      p.discountAmount > 0 ? `$${p.discountAmount.toFixed(2)}` : "",
-      `"${p.unitPrice || ""}"`,
-      `"${p.promoType}"`,
-      `"${(p.promoDetails || "").replace(/"/g, '""')}"`,
       `"${p.productUrl}"`
     ]);
     const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -230,7 +295,15 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container has-floating-nav">
-      {/* 1. Pixel-Accurate Mockup Header */}
+      {/* Offline Mode Banner */}
+      {isOffline && (
+        <div className="offline-network-banner" role="status">
+          <WifiOff size={14} />
+          <span>Offline Mode — Showing cached FSA verification & local scan history</span>
+        </div>
+      )}
+
+      {/* 1. Mockup Header */}
       <MockupHeader
         status={status}
         isRefreshing={isRefreshing}
@@ -239,21 +312,21 @@ export const App: React.FC = () => {
         onToggleTheme={toggleTheme}
         onExportCsv={handleExportCsv}
         onOpenImportModal={() => setIsImportModalOpen(true)}
+        subtitle="Your shopping companion"
       />
 
-      {/* 2. Main Destinations */}
+      {/* 2. Main Navigation Destinations */}
       <main className="app-main-content">
-        {activeTab === "discover" ? (
-          /* Mockup Homepage: Editorial Hero + 2 Summary Cards + Today's Deals + Big Deal Cards */
-          <EditorialHomepage
-            products={products}
-            status={status}
-            onInspectProduct={(prod) => setSelectedProduct(prod)}
-            onRefreshAll={handleRefreshAll}
-            isRefreshing={isRefreshing}
+        {activeTab === "scan" ? (
+          /* Main Homepage: In-Store Barcode Scanner */
+          <ScannerHome
+            onStartScanning={() => setIsScannerOpen(true)}
+            onEnterManually={() => setIsManualBarcodeOpen(true)}
+            onInspectScannedProduct={(product) => setScannedProductResult(product)}
+            onViewAllSaved={() => setActiveTab("saved")}
           />
         ) : activeTab === "search" ? (
-          /* Multi-Store Search & Compare with 3 Bottom Sheet Filters */
+          /* Multi-Store Search & Compare */
           <DiscoverView
             products={products}
             isSaved={isSaved}
@@ -263,32 +336,78 @@ export const App: React.FC = () => {
             isMobile={isMobileViewport}
           />
         ) : activeTab === "saved" ? (
-          /* Saved Deals & Watchlist URLs */
+          /* Saved Scans & Watchlist Deals */
           <SavedView
             products={products}
             savedIds={savedIds}
             onToggleSave={toggleSave}
             onClearSaved={clearSaved}
             onSelectProduct={(product) => setSelectedProduct(product)}
-            onGoToDeals={() => setActiveTab("discover")}
+            onGoToDeals={() => setActiveTab("deals")}
             onOpenImportModal={() => setIsImportModalOpen(true)}
             onExportCsv={handleExportCsv}
             watchlistUrls={watchlistUrls}
             onAddWatchlistUrl={handleAddWatchlistUrl}
+            onInspectScannedProduct={(product) => setScannedProductResult(product)}
+            onGoToScan={() => setActiveTab("scan")}
           />
         ) : (
-          /* Insights: Price Drops, Statistics, and Interactive AG Grid Spreadsheet */
-          <InsightsView
+          /* Deals: Editorial Homepage with Today's Deals Feed */
+          <EditorialHomepage
             products={products}
+            status={status}
             onInspectProduct={(prod) => setSelectedProduct(prod)}
-            onExportCsv={handleExportCsv}
-            isDarkMode={isDarkMode}
-            isTablet={isTabletViewport}
+            onRefreshAll={handleRefreshAll}
+            isRefreshing={isRefreshing}
           />
         )}
       </main>
 
-      {/* 3. Product Inspector Drawer / Bottom Sheet */}
+      {/* 3. Barcode Camera Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onBarcodeDetected={handleBarcodeDetected}
+        onManualEntry={() => {
+          setIsScannerOpen(false);
+          setIsManualBarcodeOpen(true);
+        }}
+      />
+
+      {/* 4. Manual Barcode Numeric Entry Modal */}
+      <ManualBarcodeEntryModal
+        isOpen={isManualBarcodeOpen}
+        onClose={() => setIsManualBarcodeOpen(false)}
+        onSubmitBarcode={handleBarcodeDetected}
+      />
+
+      {/* 5. Manual Product Identification Modal (Product Not Found) */}
+      <ManualProductIdentificationModal
+        isOpen={Boolean(unidentifiedBarcode)}
+        barcode={unidentifiedBarcode || ""}
+        onClose={() => setUnidentifiedBarcode(null)}
+        onSubmit={handleManualIdentificationSubmit}
+      />
+
+      {/* 6. Scan Result Details Modal */}
+      <ScanResultModal
+        isOpen={Boolean(scannedProductResult)}
+        product={scannedProductResult}
+        onClose={() => setScannedProductResult(null)}
+        onScanAnother={() => {
+          setScannedProductResult(null);
+          setIsScannerOpen(true);
+        }}
+        onViewMatchingDeal={(dealId) => {
+          const deal = products.find((p) => p.id === dealId);
+          if (deal) {
+            setSelectedProduct(deal);
+            setActiveTab("deals");
+          }
+        }}
+      />
+
+      {/* 7. Product Detail Drawer for Online Deals */}
       <ProductDetailDrawer
         product={selectedProduct}
         history={selectedProduct ? histories[selectedProduct.id] || [] : []}
@@ -297,14 +416,14 @@ export const App: React.FC = () => {
         isMobile={isMobileViewport}
       />
 
-      {/* 4. Multi-Store Compare Offers Modal */}
+      {/* 8. Multi-Store Compare Offers Modal */}
       <CompareOffersModal
         product={selectedGroupedProduct}
         onClose={() => setSelectedGroupedProduct(null)}
         isDarkMode={isDarkMode}
       />
 
-      {/* 5. Watchlist & Import Modal */}
+      {/* 9. Watchlist Import Modal */}
       <WatchlistImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
@@ -313,11 +432,11 @@ export const App: React.FC = () => {
         watchlistUrls={watchlistUrls}
       />
 
-      {/* 6. Floating Pill Bottom Navigation (4 Destinations matching mockup) */}
+      {/* 10. Floating Pill Bottom Navigation (Scan / Search / Saved / Deals) */}
       <FloatingBottomNav
         activeTab={activeTab}
         onNavigate={setActiveTab}
-        savedCount={savedIds.length}
+        savedCount={savedIds.length + ScanHistoryService.getSaved().length}
       />
     </div>
   );

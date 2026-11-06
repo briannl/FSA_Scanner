@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { TrackerStatus } from "../types/product";
 import { SettingsSheet } from "./SettingsSheet";
-import { HeartPulse, SlidersHorizontal } from "lucide-react";
+import { ScanBarcode, SlidersHorizontal } from "lucide-react";
 
 interface MockupHeaderProps {
   status: TrackerStatus;
@@ -11,6 +11,7 @@ interface MockupHeaderProps {
   onToggleTheme: () => void;
   onExportCsv: () => void;
   onOpenImportModal: () => void;
+  subtitle?: string;
 }
 
 export const MockupHeader: React.FC<MockupHeaderProps> = ({
@@ -20,7 +21,8 @@ export const MockupHeader: React.FC<MockupHeaderProps> = ({
   isDarkMode,
   onToggleTheme,
   onExportCsv,
-  onOpenImportModal
+  onOpenImportModal,
+  subtitle = "Your shopping companion"
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
@@ -28,18 +30,18 @@ export const MockupHeader: React.FC<MockupHeaderProps> = ({
     <>
       <header className="mockup-header">
         <div className="mockup-header-inner">
-          {/* Left: App Logo & Title */}
+          {/* Left: App Logo & Title matching mockup */}
           <div className="mockup-header-brand">
-            <div className="mockup-header-logo-box">
-              <HeartPulse size={20} className="mockup-header-icon" strokeWidth={2.4} />
+            <div className="mockup-header-logo-box" aria-label="FSA Tracker Icon">
+              <ScanBarcode size={21} className="mockup-header-icon" strokeWidth={2.4} />
             </div>
             <div className="mockup-header-titles">
               <h1 className="mockup-app-title">FSA Tracker</h1>
-              <p className="mockup-app-subtitle">Your personal deal finder</p>
+              <p className="mockup-app-subtitle">{subtitle}</p>
             </div>
           </div>
 
-          {/* Right: Circular Settings / Filter Button */}
+          {/* Right: Circular Settings Button */}
           <button
             type="button"
             className="mockup-settings-btn"

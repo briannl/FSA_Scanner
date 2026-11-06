@@ -1,7 +1,7 @@
 import React from "react";
-import { LayoutGrid, Search, Bookmark, BarChart2 } from "lucide-react";
+import { ScanBarcode, Search, Bookmark, Tag } from "lucide-react";
 
-export type NavTab = "discover" | "search" | "saved" | "insights";
+export type NavTab = "scan" | "search" | "saved" | "deals";
 
 interface FloatingBottomNavProps {
   activeTab: NavTab;
@@ -21,15 +21,15 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
       role="navigation"
     >
       <div className="mockup-nav-capsule">
-        {/* Tab 1: Discover (Homepage) */}
+        {/* Tab 1: Scan (Default In-Store Homepage) */}
         <button
           type="button"
-          className={`mockup-nav-item ${activeTab === "discover" ? "active" : ""}`}
-          onClick={() => onNavigate("discover")}
-          aria-label="Discover deals"
+          className={`mockup-nav-item ${activeTab === "scan" ? "active" : ""}`}
+          onClick={() => onNavigate("scan")}
+          aria-label="Scan product barcode"
         >
-          <LayoutGrid size={18} strokeWidth={2.4} />
-          {activeTab === "discover" && <span className="mockup-nav-label">Discover</span>}
+          <ScanBarcode size={19} strokeWidth={2.4} />
+          {activeTab === "scan" && <span className="mockup-nav-label">Scan</span>}
         </button>
 
         {/* Tab 2: Search (Multi-Store Discovery & Filters) */}
@@ -43,12 +43,12 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           {activeTab === "search" && <span className="mockup-nav-label">Search</span>}
         </button>
 
-        {/* Tab 3: Saved (Watchlist) */}
+        {/* Tab 3: Saved (Watchlist & Scans) */}
         <button
           type="button"
           className={`mockup-nav-item ${activeTab === "saved" ? "active" : ""}`}
           onClick={() => onNavigate("saved")}
-          aria-label="Saved products"
+          aria-label="Saved products and scans"
         >
           <div style={{ position: "relative", display: "inline-flex" }}>
             <Bookmark size={19} strokeWidth={2.2} />
@@ -59,15 +59,15 @@ export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
           {activeTab === "saved" && <span className="mockup-nav-label">Saved</span>}
         </button>
 
-        {/* Tab 4: Insights (Analytics & Spreadsheet) */}
+        {/* Tab 4: Deals (Today's Deals, Summary Cards & Spreadsheet) */}
         <button
           type="button"
-          className={`mockup-nav-item ${activeTab === "insights" ? "active" : ""}`}
-          onClick={() => onNavigate("insights")}
-          aria-label="Price insights and spreadsheet"
+          className={`mockup-nav-item ${activeTab === "deals" ? "active" : ""}`}
+          onClick={() => onNavigate("deals")}
+          aria-label="Active FSA deals and discounts"
         >
-          <BarChart2 size={19} strokeWidth={2.2} />
-          {activeTab === "insights" && <span className="mockup-nav-label">Insights</span>}
+          <Tag size={19} strokeWidth={2.2} />
+          {activeTab === "deals" && <span className="mockup-nav-label">Deals</span>}
         </button>
       </div>
     </nav>
