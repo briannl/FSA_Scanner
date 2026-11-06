@@ -33,6 +33,7 @@ interface ProductDetailDrawerProps {
   history: PricePoint[];
   onClose: () => void;
   isDarkMode?: boolean;
+  isMobile?: boolean;
 }
 
 const renderDrawerCategoryIcon = (category: string) => {
@@ -49,7 +50,8 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
   product,
   history,
   onClose,
-  isDarkMode = false
+  isDarkMode = true,
+  isMobile = false
 }) => {
   // ESC key listener to close drawer
   useEffect(() => {
@@ -88,30 +90,30 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
     product.currentPrice !== null &&
     product.currentPrice <= product.lowestHistoricalPrice;
 
-  // Custom Chart Tooltip
+  // Custom Chart Tooltip with Lavender and Lime styling
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
         <div
           style={{
-            backgroundColor: isDarkMode ? "#0f172a" : "#ffffff",
-            border: `1px solid ${isDarkMode ? "#334155" : "#e2e8f0"}`,
-            borderRadius: "8px",
-            padding: "0.5rem 0.75rem",
-            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.15)",
-            fontSize: "0.775rem",
-            color: isDarkMode ? "#f8fafc" : "#0f172a"
+            backgroundColor: isDarkMode ? "#12131a" : "#ffffff",
+            border: `1px solid ${isDarkMode ? "var(--border-strong)" : "#cbc5df"}`,
+            borderRadius: "14px",
+            padding: "0.6rem 0.85rem",
+            boxShadow: "var(--shadow-md)",
+            fontSize: "0.8rem",
+            color: isDarkMode ? "#f8fafc" : "#181426"
           }}
         >
-          <div style={{ color: "var(--text-muted)", fontSize: "0.7rem", marginBottom: "2px" }}>
+          <div style={{ fontWeight: 600, color: "var(--text-muted)", marginBottom: "4px" }}>
             {label}
           </div>
-          <div style={{ fontWeight: 700, fontSize: "0.95rem" }} className="font-mono">
-            {data.price !== null ? `$${Number(data.price).toFixed(2)}` : "Uncertain"}
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: "1.05rem", fontWeight: 700, color: "var(--lavender)" }}>
+            ${data.price !== null ? data.price.toFixed(2) : "Uncertain"}
           </div>
           {data.promo && data.promo !== "None" && (
-            <div style={{ color: "var(--primary)", marginTop: "2px", fontWeight: 500 }}>
+            <div style={{ fontSize: "0.725rem", color: "var(--lime)", marginTop: "4px", fontWeight: 600 }}>
               {data.promo}
             </div>
           )}
@@ -123,17 +125,27 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
 
   return (
     <div
-      className="drawer-overlay"
+      className={`drawer-overlay ${isMobile ? "mobile-sheet-overlay" : ""}`}
       onClick={onClose}
       role="dialog"
       aria-modal="true"
-      aria-labelledby="drawer-product-title"
+      aria-labelledby="drawer-title"
     >
-      <div className="drawer-content-sheet" onClick={(e) => e.stopPropagation()}>
-        {/* Header Hero Banner */}
+      <div
+        className={`drawer-content-sheet ${isMobile ? "mobile-bottom-sheet" : "desktop-side-panel"}`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Mobile Drag Handle Pill */}
+        {isMobile && (
+          <div className="bottom-sheet-handle-area">
+            <div className="bottom-sheet-handle" />
+          </div>
+        )}
+
+        {/* Top Product Banner */}
         <div className="drawer-top-banner">
           <div className="drawer-hero-info">
-            <div className="drawer-product-large-img">
+            <div className="drawer-product-large-img" title={product.category}>
               {product.imageUrl ? (
                 <img
                   src={product.imageUrl}
@@ -146,14 +158,16 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
                 renderDrawerCategoryIcon(product.category)
               )}
             </div>
-
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.25rem" }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: "flex", gap: "0.4rem", alignItems: "center", marginBottom: "0.25rem", flexWrap: "wrap" }}>
                 <span className={`retailer-pill ${product.retailer.toLowerCase()}`}>
                   {product.retailer}
                 </span>
-                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                <span style={{ fontSize: "0.725rem", color: "var(--text-muted)" }}>
                   {product.category}
+                </span>
+                <span className={`source-type-pill ${product.sourceType}`}>
+                  {formatSourceLabel(product.sourceType)}
                 </span>
                 {product.fsaEligible && (
                   <span className="fsa-check-badge">
@@ -161,11 +175,10 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
                   </span>
                 )}
               </div>
-
               <h2
-                id="drawer-product-title"
+                id="drawer-title"
                 style={{
-                  fontSize: "1rem",
+                  fontSize: "1.05rem",
                   fontWeight: 700,
                   lineHeight: 1.35,
                   color: "var(--text-main)"
@@ -173,9 +186,8 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               >
                 {product.name}
               </h2>
-
-              <div style={{ fontSize: "0.725rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                SKU: <span className="font-mono">{product.id}</span>
+              <div className="timestamp font-mono" style={{ fontSize: "0.725rem", color: "var(--text-subtle)", marginTop: "0.25rem" }}>
+                SKU: {product.id}
               </div>
             </div>
           </div>
@@ -184,23 +196,24 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
             type="button"
             className="btn btn-icon-only"
             onClick={onClose}
-            aria-label="Close slide-over inspector"
+            aria-label="Close details"
+            style={{ borderRadius: "var(--radius-pill)" }}
           >
-            <X size={16} />
+            <X size={18} />
           </button>
         </div>
 
-        {/* Scrollable Body */}
+        {/* Scrollable Body Content */}
         <div className="drawer-scroll-body">
-          {/* Price Summary 4-Box Grid */}
+          {/* 4-Box Key Stats Grid with Lavender and Lime Highlights */}
           <div className="drawer-stats-grid">
             <div className="drawer-stat-box">
               <span className="drawer-stat-label">Current Price</span>
-              <span className="drawer-stat-value">
+              <span className="drawer-stat-value font-mono">
                 {product.currentPrice !== null ? `$${product.currentPrice.toFixed(2)}` : "Uncertain"}
               </span>
               {product.regularPrice && product.regularPrice > (product.currentPrice || 0) && (
-                <span style={{ fontSize: "0.725rem", color: "var(--text-muted)", textDecoration: "line-through" }} className="font-mono">
+                <span style={{ fontSize: "0.725rem", color: "var(--text-subtle)", textDecoration: "line-through", marginTop: "2px" }} className="font-mono">
                   Reg ${product.regularPrice.toFixed(2)}
                 </span>
               )}
@@ -208,22 +221,24 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
 
             <div className="drawer-stat-box">
               <span className="drawer-stat-label">Verified Savings</span>
-              <span className="drawer-stat-value emerald">
-                {product.discountPercent > 0 ? `-${product.discountPercent.toFixed(1)}%` : "0%"}
+              <span className="drawer-stat-value lime font-mono">
+                {product.discountPercent > 0 ? `-${product.discountPercent.toFixed(1)}%` : "0.0%"}
               </span>
-              <span style={{ fontSize: "0.725rem", color: "var(--emerald)" }} className="font-mono">
-                Save ${product.discountAmount.toFixed(2)}
-              </span>
+              {product.discountAmount > 0 && (
+                <span style={{ fontSize: "0.725rem", color: "var(--lime)", marginTop: "2px" }} className="font-mono">
+                  Save ${product.discountAmount.toFixed(2)}
+                </span>
+              )}
             </div>
 
             <div className="drawer-stat-box">
               <span className="drawer-stat-label">All-Time Low</span>
-              <span className="drawer-stat-value" style={{ color: isLowest ? "var(--emerald)" : "var(--text-main)" }}>
-                ${product.lowestHistoricalPrice?.toFixed(2) ?? "—"}
+              <span className="drawer-stat-value font-mono">
+                {product.lowestHistoricalPrice !== null ? `$${product.lowestHistoricalPrice.toFixed(2)}` : "N/A"}
               </span>
               {isLowest && (
-                <span style={{ fontSize: "0.725rem", color: "var(--emerald)", fontWeight: 600 }}>
-                  <Award size={12} style={{ display: "inline" }} /> All-Time Low!
+                <span className="badge-alltime-low" style={{ marginTop: "4px", width: "fit-content" }}>
+                  <Award size={11} /> All-Time Low
                 </span>
               )}
             </div>
@@ -233,100 +248,111 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               <span className="drawer-stat-value font-mono" style={{ fontSize: "0.95rem" }}>
                 {product.observedAt ? product.observedAt.slice(0, 10) : "Today"}
               </span>
-              <div style={{ marginTop: "0.25rem" }}>
-                <span className={`source-type-pill ${product.sourceType}`}>
-                  {formatSourceLabel(product.sourceType)}
-                </span>
-              </div>
+              <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                {formatSourceLabel(product.sourceType)}
+              </span>
             </div>
           </div>
 
-          {/* Interactive Recharts Price History with Gradient Fill */}
+          {/* Interactive Recharts Price History Chart */}
           <div className="drawer-chart-card">
             <div className="drawer-chart-header">
               <div className="drawer-chart-title">
-                <Clock size={15} style={{ color: "var(--primary)" }} />
+                <Clock size={16} style={{ color: "var(--lavender)" }} />
                 <span>Price Trend & Recorded Points</span>
               </div>
-              <span style={{ fontSize: "0.725rem", color: "var(--text-muted)" }}>
-                {chartData.length} observations
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                {chartData.length} {chartData.length === 1 ? "observation" : "observations"}
               </span>
             </div>
 
-            <div style={{ height: 210, width: "100%" }}>
+            <div style={{ width: "100%", height: 210 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData} margin={{ top: 8, right: 10, left: -20, bottom: 0 }}>
+                <AreaChart data={chartData} margin={{ top: 12, right: 12, left: -16, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#0284c7" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#0284c7" stopOpacity={0.0} />
+                    <linearGradient id="priceGradientLavender" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={isDarkMode ? "#a78bfa" : "#7c3aed"} stopOpacity={0.35} />
+                      <stop offset="95%" stopColor={isDarkMode ? "#a78bfa" : "#7c3aed"} stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={isDarkMode ? "#1e293b" : "#e2e8f0"} />
-                  <XAxis dataKey="date" tick={{ fontSize: 10, fill: isDarkMode ? "#94a3b8" : "#64748b" }} />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke={isDarkMode ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="date"
+                    stroke="var(--text-subtle)"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={{ stroke: "var(--border-subtle)" }}
+                  />
                   <YAxis
+                    stroke="var(--text-subtle)"
+                    fontSize={11}
                     domain={[yDomainMin, yDomainMax]}
-                    tick={{ fontSize: 10, fill: isDarkMode ? "#94a3b8" : "#64748b" }}
-                    tickFormatter={(val) => `$${val}`}
+                    tickLine={false}
+                    axisLine={{ stroke: "var(--border-subtle)" }}
+                    tickFormatter={(v) => `$${v}`}
                   />
                   <Tooltip content={<CustomTooltip />} />
                   {product.regularPrice && (
                     <ReferenceLine
                       y={product.regularPrice}
-                      stroke="#94a3b8"
-                      strokeDasharray="3 3"
-                      label={{ value: "Regular", fill: "#94a3b8", fontSize: 9, position: "insideTopRight" }}
+                      stroke={isDarkMode ? "rgba(255,255,255,0.25)" : "rgba(0,0,0,0.25)"}
+                      strokeDasharray="4 4"
+                      label={{
+                        value: "Regular",
+                        fill: "var(--text-subtle)",
+                        fontSize: 10,
+                        position: "right"
+                      }}
                     />
                   )}
                   {product.lowestHistoricalPrice && (
                     <ReferenceLine
                       y={product.lowestHistoricalPrice}
-                      stroke="#10b981"
-                      strokeDasharray="4 4"
-                      label={{ value: "All-Time Low", fill: "#10b981", fontSize: 9, position: "insideBottomLeft" }}
+                      stroke="var(--lime)"
+                      strokeDasharray="2 2"
+                      label={{
+                        value: "All-Time Low",
+                        fill: "var(--lime)",
+                        fontSize: 10,
+                        position: "left"
+                      }}
                     />
                   )}
                   <Area
                     type="monotone"
                     dataKey="price"
-                    stroke="#0284c7"
-                    strokeWidth={2.2}
+                    stroke={isDarkMode ? "#a78bfa" : "#7c3aed"}
+                    strokeWidth={2.5}
                     fillOpacity={1}
-                    fill="url(#priceGradient)"
-                    dot={{ r: 3.5, fill: "#0284c7" }}
-                    activeDot={{ r: 5 }}
+                    fill="url(#priceGradientLavender)"
+                    dot={{ r: 4, fill: isDarkMode ? "#a78bfa" : "#7c3aed", strokeWidth: 2, stroke: isDarkMode ? "#090a0f" : "#ffffff" }}
+                    activeDot={{ r: 6, fill: "var(--lime)", stroke: isDarkMode ? "#090a0f" : "#ffffff", strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Promotion & Restrictions Card */}
-          <div
-            style={{
-              backgroundColor: "var(--bg-subtle)",
-              border: "1px solid var(--border-subtle)",
-              borderRadius: "var(--radius-lg)",
-              padding: "1rem",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.65rem"
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontWeight: 600, fontSize: "0.85rem" }}>
-              <Tag size={15} style={{ color: "var(--primary)" }} />
+          {/* Deal Conditions & Rules Container */}
+          <div className="drawer-chart-card" style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem", fontWeight: 600 }}>
+              <Tag size={16} style={{ color: "var(--lavender)" }} />
               <span>Deal Terms & Verification Details</span>
             </div>
 
             <div style={{ display: "flex", alignItems: "flex-start", gap: "0.5rem", fontSize: "0.825rem" }}>
-              <Layers size={14} style={{ color: "var(--primary)", marginTop: "2px", flexShrink: 0 }} />
+              <Layers size={14} style={{ color: "var(--lavender)", marginTop: "2px", flexShrink: 0 }} />
               <div>
                 <strong>Promo Category:</strong> {product.promoType}
               </div>
             </div>
 
             {product.promoDetails ? (
-              <div style={{ fontSize: "0.825rem", color: "var(--text-muted)", background: "var(--bg-surface)", padding: "0.6rem 0.75rem", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
+              <div style={{ fontSize: "0.825rem", color: "var(--text-muted)", background: "var(--bg-subtle)", padding: "0.6rem 0.85rem", borderRadius: "var(--radius-md)", border: "1px solid var(--border-subtle)" }}>
                 <strong>Offer Terms:</strong> {product.promoDetails}
               </div>
             ) : (
@@ -344,8 +370,9 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
                   fontSize: "0.8rem",
                   color: "var(--amber)",
                   backgroundColor: "var(--amber-light)",
-                  padding: "0.4rem 0.65rem",
-                  borderRadius: "var(--radius-md)"
+                  padding: "0.45rem 0.75rem",
+                  borderRadius: "var(--radius-pill)",
+                  border: "1px solid var(--amber-border)"
                 }}
               >
                 <TrendingDown size={14} />
@@ -353,7 +380,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
               </div>
             )}
 
-            <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.775rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
+            <div style={{ display: "flex", gap: "1.5rem", fontSize: "0.775rem", color: "var(--text-muted)", marginTop: "0.25rem", flexWrap: "wrap" }}>
               <div>
                 <strong>Package Size:</strong> {product.size || "Standard pack"}
               </div>
@@ -364,9 +391,9 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
           </div>
         </div>
 
-        {/* Footer Actions */}
+        {/* Footer Actions with Pill-Shaped Buttons */}
         <div className="drawer-action-footer">
-          <button type="button" className="btn btn-secondary" onClick={onClose}>
+          <button type="button" className="btn btn-secondary" onClick={onClose} style={{ borderRadius: "var(--radius-pill)" }}>
             Close
           </button>
 
@@ -375,7 +402,7 @@ export const ProductDetailDrawer: React.FC<ProductDetailDrawerProps> = ({
             target="_blank"
             rel="noopener noreferrer"
             className="btn btn-primary"
-            style={{ textDecoration: "none" }}
+            style={{ textDecoration: "none", borderRadius: "var(--radius-pill)" }}
           >
             <span>View on {product.retailer}</span>
             <ExternalLink size={14} />

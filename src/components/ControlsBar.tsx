@@ -63,17 +63,18 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
   }, []);
 
   return (
-    <div className="toolbar-container">
+    <div className="toolbar-container" id="controls-section">
       <div className="toolbar-card">
         {/* Main Row: Search, Retailer Segment, Switches, View Toggle */}
         <div className="toolbar-main-row">
-          {/* Search Field */}
+          {/* Pill Search Field */}
           <div className="search-wrapper">
-            <Search size={15} className="search-icon-leading" />
+            <Search size={16} className="search-icon-leading" />
             <input
+              id="fsa-search-input"
               ref={searchInputRef}
               type="text"
-              className="search-input-field"
+              className="search-input-field pill-input"
               placeholder="Search products, brands, symptoms..."
               value={searchText}
               onChange={(e) => onSearchChange(e.target.value)}
@@ -98,31 +99,31 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
             </div>
           </div>
 
-          {/* Retailer Segmented Control */}
-          <div className="retailer-segmented-group" role="group" aria-label="Retailer Filter">
+          {/* Retailer Segmented Pill Group */}
+          <div className="retailer-segmented-group pill-group" role="group" aria-label="Retailer Filter">
             <button
               type="button"
-              className={`retailer-tab-btn ${selectedRetailer === "All" ? "active" : ""}`}
+              className={`retailer-tab-btn pill-tab ${selectedRetailer === "All" ? "active" : ""}`}
               onClick={() => onRetailerChange("All")}
             >
               <span>All</span>
-              <span className="tab-count">{retailerCounts.all}</span>
+              <span className="tab-count font-mono">{retailerCounts.all}</span>
             </button>
             <button
               type="button"
-              className={`retailer-tab-btn ${selectedRetailer === "CVS" ? "active" : ""}`}
+              className={`retailer-tab-btn pill-tab ${selectedRetailer === "CVS" ? "active" : ""}`}
               onClick={() => onRetailerChange("CVS")}
             >
               <span>CVS</span>
-              <span className="tab-count">{retailerCounts.cvs}</span>
+              <span className="tab-count font-mono">{retailerCounts.cvs}</span>
             </button>
             <button
               type="button"
-              className={`retailer-tab-btn ${selectedRetailer === "Costco" ? "active" : ""}`}
+              className={`retailer-tab-btn pill-tab ${selectedRetailer === "Costco" ? "active" : ""}`}
               onClick={() => onRetailerChange("Costco")}
             >
               <span>Costco</span>
-              <span className="tab-count">{retailerCounts.costco}</span>
+              <span className="tab-count font-mono">{retailerCounts.costco}</span>
             </button>
           </div>
 
@@ -140,7 +141,7 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
               <span>On Sale Only</span>
             </label>
 
-            <label className="custom-switch-label" title="Show only items with recent price drops">
+            <label className="custom-switch-label" title="Show only items with recent price reductions">
               <input
                 type="checkbox"
                 checked={priceDropsOnly}
@@ -152,15 +153,15 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
               <span>Price Drops Only</span>
             </label>
 
-            {/* View Mode Toggle: Displayed on Desktop & Tablet */}
+            {/* Desktop-only Table vs Card View Switcher */}
             {!isMobile && (
-              <div className="view-mode-group" role="group" aria-label="View Mode">
+              <div className="view-mode-group pill-group" role="group" aria-label="View layout switcher">
                 <button
                   type="button"
                   className={`view-mode-btn ${viewMode === "table" ? "active" : ""}`}
                   onClick={() => onViewModeChange("table")}
-                  title="Table Spreadsheet View"
-                  aria-label="Table spreadsheet view"
+                  title="Spreadsheet Table View"
+                  aria-label="Table View"
                 >
                   <TableIcon size={14} />
                 </button>
@@ -168,8 +169,8 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
                   type="button"
                   className={`view-mode-btn ${viewMode === "card" ? "active" : ""}`}
                   onClick={() => onViewModeChange("card")}
-                  title="Card Grid View"
-                  aria-label="Card grid view"
+                  title="Responsive Card Grid View"
+                  aria-label="Card View"
                 >
                   <LayoutGrid size={14} />
                 </button>
@@ -178,14 +179,14 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
           </div>
         </div>
 
-        {/* Sub-Row: Category Horizontally Scrollable Pills & Results Counter */}
+        {/* Sub-row: Horizontally Scrollable Category Pills & Deal Counter */}
         <div className="toolbar-sub-row">
-          <div className="category-scroll-bar" role="tablist" aria-label="Product Categories">
+          <div className="category-scroll-bar" role="tablist" aria-label="Filter by Product Category">
             <button
               type="button"
               role="tab"
               aria-selected={selectedCategory === "All"}
-              className={`category-pill-btn ${selectedCategory === "All" ? "active" : ""}`}
+              className={`category-pill-btn pill-btn ${selectedCategory === "All" ? "active" : ""}`}
               onClick={() => onCategoryChange("All")}
             >
               All Categories
@@ -196,7 +197,7 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
                 type="button"
                 role="tab"
                 aria-selected={selectedCategory === cat}
-                className={`category-pill-btn ${selectedCategory === cat ? "active" : ""}`}
+                className={`category-pill-btn pill-btn ${selectedCategory === cat ? "active" : ""}`}
                 onClick={() => onCategoryChange(cat)}
               >
                 {cat}
@@ -204,8 +205,8 @@ export const ControlsBar: React.FC<ControlsBarProps> = ({
             ))}
           </div>
 
-          <div className="matched-counter-text">
-            Showing <strong style={{ color: "var(--text-main)" }} className="font-mono">{matchedCount}</strong> deals
+          <div className="matches-counter font-mono" aria-live="polite">
+            Showing <strong>{matchedCount}</strong> {matchedCount === 1 ? "deal" : "deals"}
           </div>
         </div>
       </div>

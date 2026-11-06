@@ -4,7 +4,8 @@ import {
   Tag,
   Sparkles,
   TrendingDown,
-  Award
+  Award,
+  ArrowUpRight
 } from "lucide-react";
 
 export type KpiFilterType = "none" | "active_deals" | "best_discount" | "recent_drops" | "all_time_low";
@@ -50,39 +51,39 @@ export const MetricsBar: React.FC<MetricsBarProps> = ({
   };
 
   return (
-    <div className="kpi-ribbon" role="region" aria-label="Key Performance Indicators">
+    <section className="kpi-ribbon" aria-label="Key Performance Indicators">
       {/* KPI 1: Active Deals Tracked */}
       <div
         className={`kpi-card ${activeKpiFilter === "active_deals" ? "active-filter" : ""}`}
         onClick={(e) => handleCardClick("active_deals", e)}
         tabIndex={0}
         role="button"
-        title="Click to toggle active discounted deals only"
+        title="Toggle active discounted deals"
         onKeyDown={(e) => e.key === "Enter" && handleCardClick("active_deals", e as any)}
       >
         <div className="kpi-header">
           <span className="kpi-label">Active Deals Tracked</span>
-          <div className="kpi-icon-badge blue">
-            <Tag size={15} />
+          <div className="kpi-icon-badge lavender">
+            <Tag size={16} />
           </div>
         </div>
         <div className="kpi-body">
-          <span className="kpi-value">{deals.length}</span>
-          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>verified deals</span>
+          <span className="kpi-value font-mono">{deals.length}</span>
+          <span className="kpi-subtext">verified deals</span>
         </div>
         <div className="kpi-footer font-mono">
           <span>{cvsDeals} CVS</span>
-          <span style={{ opacity: 0.5 }}>/</span>
+          <span style={{ opacity: 0.4 }}>/</span>
           <span>{costcoDeals} Costco</span>
-          <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--primary)" }}>
-            {activeKpiFilter === "active_deals" ? "Active Filter ✕" : "Filter"}
+          <span className="kpi-pill-action font-sans">
+            {activeKpiFilter === "active_deals" ? "Active ✕" : "Filter"}
           </span>
         </div>
       </div>
 
-      {/* KPI 2: Best Discount Right Now */}
+      {/* KPI 2: Best Discount Right Now (Lime Green Savings Accent) */}
       <div
-        className={`kpi-card ${activeKpiFilter === "best_discount" ? "active-filter" : ""}`}
+        className={`kpi-card kpi-card-lime ${activeKpiFilter === "best_discount" ? "active-filter" : ""}`}
         onClick={(e) => {
           if (bestDeal && onInspectProduct) {
             onInspectProduct(bestDeal);
@@ -96,27 +97,27 @@ export const MetricsBar: React.FC<MetricsBarProps> = ({
         onKeyDown={(e) => e.key === "Enter" && handleCardClick("best_discount", e as any)}
       >
         <div className="kpi-header">
-          <span className="kpi-label">Best Discount Right Now</span>
-          <div className="kpi-icon-badge emerald">
-            <Sparkles size={15} />
+          <span className="kpi-label">Top Savings Right Now</span>
+          <div className="kpi-icon-badge lime">
+            <Sparkles size={16} />
           </div>
         </div>
         <div className="kpi-body">
-          <span className="kpi-value" style={{ color: "var(--emerald)" }}>
-            {bestDeal ? `-${bestDeal.discountPercent.toFixed(1)}%` : "0%"}
+          <span className="kpi-value font-mono text-lime">
+            {bestDeal ? `-${bestDeal.discountPercent.toFixed(1)}%` : "—"}
           </span>
-          {bestDeal && (
-            <span style={{ fontSize: "0.8rem", color: "var(--emerald)", fontWeight: 600 }}>
+          {bestDeal && bestDeal.discountAmount > 0 && (
+            <span className="kpi-subtext font-mono text-lime" style={{ fontWeight: 600 }}>
               (Save ${bestDeal.discountAmount.toFixed(2)})
             </span>
           )}
         </div>
         <div className="kpi-footer">
-          <span className="accent" title={bestDeal ? bestDeal.name : "None"}>
-            {bestDeal ? `${bestDeal.retailer}: ${bestDeal.name.slice(0, 24)}...` : "No active sales"}
+          <span className="kpi-product-summary" title={bestDeal ? `${bestDeal.retailer}: ${bestDeal.name}` : "None"}>
+            {bestDeal ? `${bestDeal.retailer}: ${bestDeal.name}` : "No active discounts"}
           </span>
-          <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--emerald)" }}>
-            Inspect ↗
+          <span className="kpi-pill-action font-sans" style={{ color: "var(--lime)" }}>
+            Inspect <ArrowUpRight size={12} style={{ display: "inline" }} />
           </span>
         </div>
       </div>
@@ -127,25 +128,23 @@ export const MetricsBar: React.FC<MetricsBarProps> = ({
         onClick={(e) => handleCardClick("recent_drops", e)}
         tabIndex={0}
         role="button"
-        title="Click to filter products with recent price drops"
+        title="Toggle recent price drops"
         onKeyDown={(e) => e.key === "Enter" && handleCardClick("recent_drops", e as any)}
       >
         <div className="kpi-header">
           <span className="kpi-label">Recent Price Drops</span>
           <div className="kpi-icon-badge amber">
-            <TrendingDown size={15} />
+            <TrendingDown size={16} />
           </div>
         </div>
         <div className="kpi-body">
-          <span className="kpi-value">{recentDrops.length}</span>
-          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>new drops today</span>
+          <span className="kpi-value font-mono">{recentDrops.length}</span>
+          <span className="kpi-subtext">new drops today</span>
         </div>
-        <div className="kpi-footer">
-          <span style={{ color: "var(--amber)", fontWeight: 600 }}>
-            {recentDrops.length > 0 ? "Lower than prior check" : "Stable prices"}
-          </span>
-          <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "var(--amber)" }}>
-            {activeKpiFilter === "recent_drops" ? "Active Filter ✕" : "Filter"}
+        <div className="kpi-footer font-mono">
+          <span className="accent-amber">Lower than prior check</span>
+          <span className="kpi-pill-action font-sans">
+            {activeKpiFilter === "recent_drops" ? "Active ✕" : "Filter"}
           </span>
         </div>
       </div>
@@ -156,26 +155,26 @@ export const MetricsBar: React.FC<MetricsBarProps> = ({
         onClick={(e) => handleCardClick("all_time_low", e)}
         tabIndex={0}
         role="button"
-        title="Click to filter products currently sitting at their all-time lowest price"
+        title="Toggle all-time low price deals"
         onKeyDown={(e) => e.key === "Enter" && handleCardClick("all_time_low", e as any)}
       >
         <div className="kpi-header">
-          <span className="kpi-label">At Historical Low</span>
-          <div className="kpi-icon-badge purple">
-            <Award size={15} />
+          <span className="kpi-label">At All-Time Low</span>
+          <div className="kpi-icon-badge lavender">
+            <Award size={16} />
           </div>
         </div>
         <div className="kpi-body">
-          <span className="kpi-value">{atHistoricalLows.length}</span>
-          <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>all-time lowest</span>
+          <span className="kpi-value font-mono">{atHistoricalLows.length}</span>
+          <span className="kpi-subtext">all-time lowest</span>
         </div>
-        <div className="kpi-footer">
-          <span style={{ color: "#9333ea", fontWeight: 600 }}>Prime buying window</span>
-          <span style={{ marginLeft: "auto", fontSize: "0.7rem", color: "#9333ea" }}>
-            {activeKpiFilter === "all_time_low" ? "Active Filter ✕" : "Filter"}
+        <div className="kpi-footer font-mono">
+          <span className="accent-lavender">Prime buying window</span>
+          <span className="kpi-pill-action font-sans">
+            {activeKpiFilter === "all_time_low" ? "Active ✕" : "Filter"}
           </span>
         </div>
       </div>
-    </div>
+    </section>
   );
 };

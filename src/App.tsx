@@ -6,6 +6,7 @@ import { ProductGrid } from "./components/ProductGrid";
 import { MobileCardView } from "./components/MobileCardView";
 import { ProductDetailDrawer } from "./components/ProductDetailDrawer";
 import { WatchlistImportModal } from "./components/WatchlistImportModal";
+import { FloatingBottomNav } from "./components/FloatingBottomNav";
 import {
   ProductObservation,
   PricePoint,
@@ -27,7 +28,7 @@ export const App: React.FC = () => {
     "https://www.costco.com/kirkland-signature-aller-tec-10-mg.-365-tablets.product.100412345.html"
   ]);
 
-  // Priority 1: Dark mode by default for all first-time visitors
+  // Priority 1: Sophisticated near-black dark mode by default
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     const saved = localStorage.getItem("fsa_theme");
@@ -43,7 +44,7 @@ export const App: React.FC = () => {
 
   const toggleTheme = () => setIsDarkMode((prev) => !prev);
 
-  // Priority 3 & 5: Responsive Viewport Tracking (Desktop >=1200px, Tablet 768-1199px, Mobile <768px)
+  // Responsive Viewport Tracking (Desktop >=1200px, Tablet 768-1199px, Mobile <768px)
   const [windowWidth, setWindowWidth] = useState<number>(() => {
     return typeof window !== "undefined" ? window.innerWidth : 1440;
   });
@@ -320,8 +321,24 @@ export const App: React.FC = () => {
     searchText
   ]);
 
+  // Floating bottom nav action triggers
+  const handleGoToDeals = () => {
+    setSelectedCategory("All");
+    setSearchText("");
+    setActiveKpiFilter("none");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleFocusSearch = () => {
+    const input = document.getElementById("fsa-search-input");
+    if (input) {
+      input.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => input.focus(), 300);
+    }
+  };
+
   return (
-    <div className="app-container">
+    <div className={`app-container ${isMobileViewport ? "has-floating-nav" : ""}`}>
       {/* 1. Sticky Command Bar & Live Retailer Heartbeat Header */}
       <HeaderStatusBar
         status={status}
@@ -379,12 +396,13 @@ export const App: React.FC = () => {
         />
       )}
 
-      {/* 5. Slide-Over Product Inspector Drawer */}
+      {/* 5. Slide-Over Product Inspector Drawer (Desktop) or Bottom Sheet (Mobile) */}
       <ProductDetailDrawer
         product={selectedProduct}
         history={selectedProduct ? histories[selectedProduct.id] || [] : []}
         onClose={() => setSelectedProduct(null)}
         isDarkMode={isDarkMode}
+        isMobile={isMobileViewport}
       />
 
       {/* Watchlist & Import Modal */}
@@ -395,6 +413,20 @@ export const App: React.FC = () => {
         onAddWatchlistUrl={handleAddWatchlistUrl}
         watchlistUrls={watchlistUrls}
       />
+
+      {/* Floating Pill-Shaped Bottom Navigation Bar (Mobile Only) */}
+      {isMobileViewport && (
+        <FloatingBottomNav
+          onGoToDeals={handleGoToDeals}
+          onFocusSearch={handleFocusSearch}
+          onOpenWatchlist={() => setIsImportModalOpen(true)}
+          onRefresh={handleRefreshAll}
+          isRefreshing={isRefreshing}
+          isDarkMode={isDarkMode}
+          onToggleTheme={toggleTheme}
+          activeTab={searchText ? "search" : "deals"}
+        />
+      )}
     </div>
   );
 };

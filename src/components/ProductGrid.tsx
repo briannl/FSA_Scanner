@@ -30,29 +30,29 @@ import { formatSourceLabel } from "../utils/sourceTypeHelper";
 // Register Community Modules for AG Grid Community v33+
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-// Customized Quartz Themes for Fintech Light & Dark Navy Terminals
-const lightGridTheme = themeQuartz.withParams({
-  backgroundColor: "#ffffff",
-  foregroundColor: "#0f172a",
-  headerBackgroundColor: "#f8fafc",
-  headerTextColor: "#475569",
-  borderColor: "#e2e8f0",
-  rowHoverColor: "#f8fafc",
-  accentColor: "#0284c7",
-  selectedRowBackgroundColor: "rgba(2, 132, 199, 0.08)",
+// Customized Quartz Themes for Near-Black & Lavender Fintech Terminal
+const darkGridTheme = themeQuartz.withParams({
+  backgroundColor: "#090a0f",
+  foregroundColor: "#f8fafc",
+  headerBackgroundColor: "#12131a",
+  headerTextColor: "#94a3b8",
+  borderColor: "#202333",
+  rowHoverColor: "#1a1c26",
+  accentColor: "#a78bfa",
+  selectedRowBackgroundColor: "rgba(167, 139, 250, 0.12)",
   headerFontSize: 12,
   fontSize: 13
 });
 
-const darkGridTheme = themeQuartz.withParams({
-  backgroundColor: "#0c1427",
-  foregroundColor: "#f1f5f9",
-  headerBackgroundColor: "#080e1c",
-  headerTextColor: "#94a3b8",
-  borderColor: "#192644",
-  rowHoverColor: "#131e38",
-  accentColor: "#38bdf8",
-  selectedRowBackgroundColor: "rgba(56, 189, 248, 0.12)",
+const lightGridTheme = themeQuartz.withParams({
+  backgroundColor: "#ffffff",
+  foregroundColor: "#181426",
+  headerBackgroundColor: "#f6f5fb",
+  headerTextColor: "#645e78",
+  borderColor: "#e2deee",
+  rowHoverColor: "#f3f0ff",
+  accentColor: "#7c3aed",
+  selectedRowBackgroundColor: "rgba(124, 58, 237, 0.08)",
   headerFontSize: 12,
   fontSize: 13
 });
@@ -233,7 +233,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         }
       },
 
-      // 3. SAVINGS (width 140px, right-aligned, default sort descending)
+      // 3. SAVINGS (width 140px, right-aligned, default sort descending, Lime Green Highlight)
       {
         headerName: "Savings",
         field: "discountPercent",
@@ -255,11 +255,11 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 
           return (
             <div className="savings-composite-cell">
-              <span className="savings-badge-pill font-mono">
+              <span className="savings-badge-pill lime-highlight font-mono">
                 -{item.discountPercent.toFixed(1)}%
               </span>
               {item.discountAmount > 0 && (
-                <span className="savings-dollar-subline font-mono">
+                <span className="savings-dollar-subline text-lime font-mono">
                   Save ${item.discountAmount.toFixed(2)}
                 </span>
               )}
@@ -346,12 +346,12 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
         }
       },
 
-      // 6. ACTIONS (Inspect & Buy buttons fully visible with 155px width)
+      // 6. ACTIONS (Inspect & Buy pill buttons fully visible with 160px width)
       {
         headerName: "Actions",
         pinned: pinRight,
-        width: 155,
-        minWidth: 145,
+        width: 160,
+        minWidth: 150,
         cellRenderer: (params: ICellRendererParams<ProductObservation>) => {
           const item = params.data;
           if (!item) return null;
@@ -360,7 +360,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
             <div className="actions-cell-group">
               <button
                 type="button"
-                className="btn-inspect"
+                className="btn-inspect pill-btn"
                 onClick={() => onSelectProduct(item)}
                 title="Inspect price history chart and deal conditions"
               >
@@ -372,7 +372,7 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
                 href={item.productUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-buy-link"
+                className="btn-buy-link pill-btn"
                 title={`Open product page on ${item.retailer}`}
                 onClick={(e) => e.stopPropagation()}
               >

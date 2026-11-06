@@ -22,12 +22,12 @@ interface MobileCardViewProps {
 
 const renderCategoryIcon = (category: string) => {
   const cat = category.toLowerCase();
-  if (cat.includes("diag") || cat.includes("blood") || cat.includes("pressure")) return <Activity size={18} />;
-  if (cat.includes("first aid") || cat.includes("wound") || cat.includes("bandage")) return <Bandage size={18} />;
-  if (cat.includes("sun")) return <Sun size={18} />;
-  if (cat.includes("vision") || cat.includes("eye")) return <Eye size={18} />;
-  if (cat.includes("otc") || cat.includes("med")) return <HeartPulse size={18} />;
-  return <Package size={18} />;
+  if (cat.includes("diag") || cat.includes("blood") || cat.includes("pressure")) return <Activity size={20} />;
+  if (cat.includes("first aid") || cat.includes("wound") || cat.includes("bandage")) return <Bandage size={20} />;
+  if (cat.includes("sun")) return <Sun size={20} />;
+  if (cat.includes("vision") || cat.includes("eye")) return <Eye size={20} />;
+  if (cat.includes("otc") || cat.includes("med")) return <HeartPulse size={20} />;
+  return <Package size={20} />;
 };
 
 export const MobileCardView: React.FC<MobileCardViewProps> = ({
@@ -36,20 +36,10 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
 }) => {
   if (products.length === 0) {
     return (
-      <div
-        style={{
-          padding: "3rem 1rem",
-          textAlign: "center",
-          color: "var(--text-muted)",
-          backgroundColor: "var(--bg-surface)",
-          borderRadius: "var(--radius-lg)",
-          border: "1px solid var(--border-subtle)",
-          margin: "1rem"
-        }}
-      >
-        <Package size={36} style={{ margin: "0 auto 0.75rem auto", opacity: 0.5 }} />
-        <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-main)" }}>No matching products</h3>
-        <p style={{ fontSize: "0.825rem", marginTop: "0.25rem" }}>
+      <div className="mobile-empty-state">
+        <Package size={40} style={{ margin: "0 auto 0.75rem auto", opacity: 0.5, color: "var(--lavender)" }} />
+        <h3 style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-main)" }}>No matching products</h3>
+        <p style={{ fontSize: "0.85rem", marginTop: "0.35rem", color: "var(--text-muted)" }}>
           Try clearing your search query or loosening active filters.
         </p>
       </div>
@@ -57,7 +47,7 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
   }
 
   return (
-    <div className="toolbar-container" style={{ paddingTop: 0 }}>
+    <div className="toolbar-container mobile-cards-wrapper" style={{ paddingTop: 0 }}>
       <div className="mobile-cards-grid">
         {products.map((item) => {
           const isLowest =
@@ -66,16 +56,23 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
             item.currentPrice <= item.lowestHistoricalPrice;
 
           return (
-            <div
+            <article
               key={item.id}
               className="product-mobile-card"
               onClick={() => onSelectProduct(item)}
               role="button"
               tabIndex={0}
+              aria-label={`View details for ${item.name}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelectProduct(item);
+                }
+              }}
             >
-              {/* Top Row: Thumbnail + Info */}
+              {/* Card Header: Thumbnail + Retailer & Chips + 2-Line Clamped Title */}
               <div className="mobile-card-top">
-                <div className="product-thumb-box" style={{ width: 48, height: 48 }}>
+                <div className="product-thumb-box mobile-thumb" title={item.category}>
                   {item.imageUrl ? (
                     <img
                       src={item.imageUrl}
@@ -98,14 +95,14 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                     <span className="mobile-category-tag">
                       {item.category}
                     </span>
-                    <span className={`source-type-pill ${item.sourceType}`}>
-                      {formatSourceLabel(item.sourceType)}
-                    </span>
                     {item.fsaEligible && (
                       <span className="fsa-check-badge">
                         <CheckCircle2 size={11} /> FSA
                       </span>
                     )}
+                    <span className={`source-type-pill ${item.sourceType}`}>
+                      {formatSourceLabel(item.sourceType)}
+                    </span>
                   </div>
 
                   <h3 className="mobile-product-title" title={item.name}>
@@ -114,7 +111,7 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                 </div>
               </div>
 
-              {/* Signals and Promo Details */}
+              {/* Deal Signals & Conditions Bar */}
               <div className="mobile-card-signals">
                 <span className={`promo-semantic-badge ${item.promoType === "Costco Instant Savings" ? "instant" : item.promoType === "Standard Markdown" ? "markdown" : item.promoType === "CVS Promo" ? "cvs" : item.promoType === "Multi-Buy" ? "multibuy" : item.promoType === "Coupon Only" ? "coupon" : "none"}`}>
                   {item.promoType}
@@ -122,7 +119,7 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
 
                 {item.isRecentDrop && (
                   <span className="badge-recent-drop">
-                    <TrendingDown size={11} /> Drop
+                    <TrendingDown size={11} /> Price Drop
                   </span>
                 )}
 
@@ -133,17 +130,17 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                 )}
 
                 {item.promoDetails && (
-                  <span className="mobile-promo-details">
+                  <div className="mobile-promo-details">
                     {item.promoDetails}
-                  </span>
+                  </div>
                 )}
               </div>
 
-              {/* Pricing & Quick CTAs */}
+              {/* Pricing & Interactive Pill CTAs */}
               <div className="mobile-card-pricing-row">
                 <div className="mobile-pricing-left">
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem", flexWrap: "wrap" }}>
-                    <span className="price-current-bold" style={{ fontSize: "1.15rem" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.45rem", flexWrap: "wrap" }}>
+                    <span className="price-current-bold mobile-price">
                       {item.currentPrice !== null ? `$${item.currentPrice.toFixed(2)}` : "Uncertain"}
                     </span>
                     {item.regularPrice && item.regularPrice > (item.currentPrice || 0) && (
@@ -152,7 +149,7 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                       </span>
                     )}
                     {item.discountPercent > 0 && (
-                      <span className="savings-badge-pill">
+                      <span className="savings-badge-pill lime-highlight">
                         -{item.discountPercent.toFixed(1)}%
                       </span>
                     )}
@@ -165,14 +162,14 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                 <div className="mobile-card-actions">
                   <button
                     type="button"
-                    className="btn btn-secondary mobile-action-btn"
+                    className="btn btn-secondary mobile-action-btn pill-btn"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectProduct(item);
                     }}
-                    aria-label={`Inspect ${item.name}`}
+                    aria-label={`Inspect price history for ${item.name}`}
                   >
-                    <LineChart size={14} />
+                    <LineChart size={15} />
                     <span>Inspect</span>
                   </button>
 
@@ -180,16 +177,16 @@ export const MobileCardView: React.FC<MobileCardViewProps> = ({
                     href={item.productUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn btn-primary mobile-action-btn"
+                    className="btn btn-primary mobile-action-btn pill-btn"
                     onClick={(e) => e.stopPropagation()}
-                    aria-label={`Buy ${item.name}`}
+                    aria-label={`Buy ${item.name} at ${item.retailer}`}
                   >
                     <span>Buy</span>
-                    <ExternalLink size={12} />
+                    <ExternalLink size={13} />
                   </a>
                 </div>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>
