@@ -1,22 +1,19 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { HeaderStatusBar } from "./components/HeaderStatusBar";
-import { DealsSummaryBar } from "./components/DealsSummaryBar";
-import { KpiFilterType } from "./components/MetricsBar";
-import { ProductGrid } from "./components/ProductGrid";
-import { MobileCardView } from "./components/MobileCardView";
-import { ProductDetailDrawer } from "./components/ProductDetailDrawer";
-import { WatchlistImportModal } from "./components/WatchlistImportModal";
-import { FloatingBottomNav } from "./components/FloatingBottomNav";
+import React, { useState, useEffect, useCallback } from "react";
+import { MockupHeader } from "./components/MockupHeader";
+import { EditorialHomepage } from "./components/EditorialHomepage";
 import { DiscoverView } from "./components/DiscoverView";
 import { SavedView } from "./components/SavedView";
+import { InsightsView } from "./components/InsightsView";
+import { FloatingBottomNav, NavTab } from "./components/FloatingBottomNav";
+import { ProductDetailDrawer } from "./components/ProductDetailDrawer";
+import { WatchlistImportModal } from "./components/WatchlistImportModal";
 import { CompareOffersModal } from "./components/CompareOffersModal";
 import { GroupedProduct } from "./services/productMatcher";
 import { useSavedDeals } from "./hooks/useSavedDeals";
 import {
   ProductObservation,
   PricePoint,
-  TrackerStatus,
-  Retailer
+  TrackerStatus
 } from "./types/product";
 import {
   SEED_PRODUCTS,
@@ -66,26 +63,14 @@ export const App: React.FC = () => {
   const isMobileViewport = windowWidth < 768;
   const isTabletViewport = windowWidth >= 768 && windowWidth < 1200;
 
-  // Primary 3 navigation destinations: "deals" | "discover" | "saved"
-  const [appMode, setAppMode] = useState<"deals" | "discover" | "saved">("deals");
+  // 4 Primary Navigation Destinations: "discover" | "search" | "saved" | "insights"
+  const [activeTab, setActiveTab] = useState<NavTab>("discover");
   const [selectedGroupedProduct, setSelectedGroupedProduct] = useState<GroupedProduct | null>(null);
-
-  // View mode state for tablet/desktop
-  const [viewMode, setViewMode] = useState<"table" | "card">("table");
-
-  // Filter state for Deals page
-  const [searchText, setSearchText] = useState("");
-  const [selectedRetailer, setSelectedRetailer] = useState<"All" | Retailer>("All");
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
-  const [activeDealFilter, setActiveDealFilter] = useState<KpiFilterType>("none");
 
   // Selection & Modal state
   const [selectedProduct, setSelectedProduct] = useState<ProductObservation | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // CSV export function hook from AG Grid
-  const [exportCsvFn, setExportCsvFn] = useState<(() => void) | null>(null);
 
   // Load data from /api/products
   const loadData = useCallback(async () => {
@@ -202,10 +187,6 @@ export const App: React.FC = () => {
 
   // CSV Export
   const handleExportCsv = () => {
-    if (exportCsvFn) {
-      exportCsvFn();
-      return;
-    }
     const headers = [
       "Retailer",
       "Name",
@@ -219,9 +200,9 @@ export const App: React.FC = () => {
       "Promo Details",
       "Product URL"
     ];
-    const sourceProducts = appMode === "saved"
+    const sourceProducts = activeTab === "saved"
       ? products.filter((p) => savedIds.includes(p.id))
-      : filteredProducts;
+      : products;
 
     const rows = sourceProducts.map((p) => [
       `"${p.retailer}"`,
@@ -247,122 +228,32 @@ export const App: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  // Extract unique categories for filter
-  const categories = useMemo(() => {
-    const set = new Set<string>();
-    products.forEach((p) => {
-      if (p.category) set.add(p.category);
-    });
-    return Array.from(set).sort();
-  }, [products]);
-
-  // Unified multi-facet filter pipeline for Deals
-  const filteredProducts = useMemo(() => {
-    return products.filter((item) => {
-      // 1. Retailer Filter
-      if (selectedRetailer !== "All" && item.retailer !== selectedRetailer) {
-        return false;
-      }
-
-      // 2. Category Filter
-      if (selectedCategory !== "All" && item.category !== selectedCategory) {
-        return false;
-      }
-
-      // 3. Quick Chips Filter
-      if (activeDealFilter === "recent_drops") {
-        if (!item.isRecentDrop) return false;
-      } else if (activeDealFilter === "all_time_low") {
-        const isLowest =
-          item.lowestHistoricalPrice !== null &&
-          item.currentPrice !== null &&
-          item.currentPrice <= item.lowestHistoricalPrice;
-        if (!isLowest) return false;
-      } else if (activeDealFilter === "best_discount") {
-        if (item.discountPercent < 20) return false;
-      }
-
-      // 4. Free-Text Search
-      if (searchText.trim()) {
-        const q = searchText.toLowerCase();
-        const matchesName = item.name.toLowerCase().includes(q);
-        const matchesCategory = item.category.toLowerCase().includes(q);
-        const matchesRetailer = item.retailer.toLowerCase().includes(q);
-        const matchesPromo = item.promoDetails?.toLowerCase().includes(q) || false;
-        const matchesPromoType = item.promoType.toLowerCase().includes(q);
-        if (!matchesName && !matchesCategory && !matchesRetailer && !matchesPromo && !matchesPromoType) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [
-    products,
-    selectedRetailer,
-    selectedCategory,
-    activeDealFilter,
-    searchText
-  ]);
-
   return (
-    <div className={`app-container ${isMobileViewport ? "has-floating-nav" : ""}`}>
-      {/* 1. Compact Single-Line Header */}
-      <HeaderStatusBar
+    <div className="app-container has-floating-nav">
+      {/* 1. Pixel-Accurate Mockup Header */}
+      <MockupHeader
         status={status}
         isRefreshing={isRefreshing}
         onRefreshAll={handleRefreshAll}
         isDarkMode={isDarkMode}
         onToggleTheme={toggleTheme}
-        activeMode={appMode}
-        onNavigate={setAppMode}
-        savedCount={savedIds.length}
-        isMobile={isMobileViewport}
+        onExportCsv={handleExportCsv}
+        onOpenImportModal={() => setIsImportModalOpen(true)}
       />
 
-      {/* 2. Main Page Views: Deals, Discover, or Saved */}
+      {/* 2. Main Destinations */}
       <main className="app-main-content">
-        {appMode === "deals" ? (
-          <>
-            {/* Deals Page: Compact summary + quick chips + search */}
-            <DealsSummaryBar
-              products={products}
-              filteredCount={filteredProducts.length}
-              searchText={searchText}
-              onSearchChange={setSearchText}
-              activeDealFilter={activeDealFilter}
-              onSelectDealFilter={setActiveDealFilter}
-              selectedRetailer={selectedRetailer}
-              onRetailerChange={setSelectedRetailer}
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-              categories={categories}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              isMobile={isMobileViewport}
-            />
-
-            {/* Product Feed: Minimal Cards on Mobile / Cards or Spreadsheet on Desktop */}
-            {isMobileViewport || viewMode === "card" ? (
-              <MobileCardView
-                products={filteredProducts}
-                isSaved={isSaved}
-                onToggleSave={toggleSave}
-                onSelectProduct={(product) => setSelectedProduct(product)}
-              />
-            ) : (
-              <ProductGrid
-                products={filteredProducts}
-                quickFilterText={searchText}
-                onSelectProduct={(product) => setSelectedProduct(product)}
-                onGridReadyExportHook={(fn) => setExportCsvFn(() => fn)}
-                isDarkMode={isDarkMode}
-                isTablet={isTabletViewport}
-              />
-            )}
-          </>
-        ) : appMode === "discover" ? (
-          /* Discover Page: 3 Compact filter buttons, search, and results feed */
+        {activeTab === "discover" ? (
+          /* Mockup Homepage: Editorial Hero + 2 Summary Cards + Today's Deals + Big Deal Cards */
+          <EditorialHomepage
+            products={products}
+            status={status}
+            onInspectProduct={(prod) => setSelectedProduct(prod)}
+            onRefreshAll={handleRefreshAll}
+            isRefreshing={isRefreshing}
+          />
+        ) : activeTab === "search" ? (
+          /* Multi-Store Search & Compare with 3 Bottom Sheet Filters */
           <DiscoverView
             products={products}
             isSaved={isSaved}
@@ -371,24 +262,33 @@ export const App: React.FC = () => {
             onCompareProduct={(grp) => setSelectedGroupedProduct(grp)}
             isMobile={isMobileViewport}
           />
-        ) : (
-          /* Saved Page: User's bookmarked deals, automated watchlist URLs, and export */
+        ) : activeTab === "saved" ? (
+          /* Saved Deals & Watchlist URLs */
           <SavedView
             products={products}
             savedIds={savedIds}
             onToggleSave={toggleSave}
             onClearSaved={clearSaved}
             onSelectProduct={(product) => setSelectedProduct(product)}
-            onGoToDeals={() => setAppMode("deals")}
+            onGoToDeals={() => setActiveTab("discover")}
             onOpenImportModal={() => setIsImportModalOpen(true)}
             onExportCsv={handleExportCsv}
             watchlistUrls={watchlistUrls}
             onAddWatchlistUrl={handleAddWatchlistUrl}
           />
+        ) : (
+          /* Insights: Price Drops, Statistics, and Interactive AG Grid Spreadsheet */
+          <InsightsView
+            products={products}
+            onInspectProduct={(prod) => setSelectedProduct(prod)}
+            onExportCsv={handleExportCsv}
+            isDarkMode={isDarkMode}
+            isTablet={isTabletViewport}
+          />
         )}
       </main>
 
-      {/* 3. Product Inspector Drawer (Desktop) or Bottom Sheet (Mobile) */}
+      {/* 3. Product Inspector Drawer / Bottom Sheet */}
       <ProductDetailDrawer
         product={selectedProduct}
         history={selectedProduct ? histories[selectedProduct.id] || [] : []}
@@ -413,14 +313,12 @@ export const App: React.FC = () => {
         watchlistUrls={watchlistUrls}
       />
 
-      {/* 6. Compact Floating Pill Bottom Navigation Bar (Mobile Only: Exactly 3 Destinations) */}
-      {isMobileViewport && (
-        <FloatingBottomNav
-          activeMode={appMode}
-          onNavigate={setAppMode}
-          savedCount={savedIds.length}
-        />
-      )}
+      {/* 6. Floating Pill Bottom Navigation (4 Destinations matching mockup) */}
+      <FloatingBottomNav
+        activeTab={activeTab}
+        onNavigate={setActiveTab}
+        savedCount={savedIds.length}
+      />
     </div>
   );
 };

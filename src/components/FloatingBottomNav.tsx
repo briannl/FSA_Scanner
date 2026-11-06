@@ -1,62 +1,73 @@
 import React from "react";
-import { Tag, Compass, Bookmark } from "lucide-react";
+import { LayoutGrid, Search, Bookmark, BarChart2 } from "lucide-react";
+
+export type NavTab = "discover" | "search" | "saved" | "insights";
 
 interface FloatingBottomNavProps {
-  activeMode: "deals" | "discover" | "saved";
-  onNavigate: (mode: "deals" | "discover" | "saved") => void;
+  activeTab: NavTab;
+  onNavigate: (tab: NavTab) => void;
   savedCount?: number;
 }
 
 export const FloatingBottomNav: React.FC<FloatingBottomNavProps> = ({
-  activeMode,
+  activeTab,
   onNavigate,
   savedCount = 0
 }) => {
   return (
     <nav
-      className="floating-bottom-nav"
-      aria-label="Mobile primary navigation"
+      className="mockup-floating-nav"
+      aria-label="Bottom Navigation"
       role="navigation"
     >
-      <div className="minimal-nav-pill">
-        {/* 1. Deals */}
+      <div className="mockup-nav-capsule">
+        {/* Tab 1: Discover (Homepage) */}
         <button
           type="button"
-          className={`minimal-bottom-btn ${activeMode === "deals" ? "active" : ""}`}
-          onClick={() => onNavigate("deals")}
-          aria-label="View curated deals"
-        >
-          <Tag size={19} className="nav-icon" />
-          <span className="nav-label">Deals</span>
-        </button>
-
-        {/* 2. Discover & Compare */}
-        <button
-          type="button"
-          className={`minimal-bottom-btn ${activeMode === "discover" ? "active" : ""}`}
+          className={`mockup-nav-item ${activeTab === "discover" ? "active" : ""}`}
           onClick={() => onNavigate("discover")}
-          aria-label="Discover multi-store categories"
+          aria-label="Discover deals"
         >
-          <Compass size={19} className="nav-icon" />
-          <span className="nav-label">Discover</span>
+          <LayoutGrid size={18} strokeWidth={2.4} />
+          {activeTab === "discover" && <span className="mockup-nav-label">Discover</span>}
         </button>
 
-        {/* 3. Saved */}
+        {/* Tab 2: Search (Multi-Store Discovery & Filters) */}
         <button
           type="button"
-          className={`minimal-bottom-btn ${activeMode === "saved" ? "active" : ""}`}
+          className={`mockup-nav-item ${activeTab === "search" ? "active" : ""}`}
+          onClick={() => onNavigate("search")}
+          aria-label="Search and filter products"
+        >
+          <Search size={19} strokeWidth={2.2} />
+          {activeTab === "search" && <span className="mockup-nav-label">Search</span>}
+        </button>
+
+        {/* Tab 3: Saved (Watchlist) */}
+        <button
+          type="button"
+          className={`mockup-nav-item ${activeTab === "saved" ? "active" : ""}`}
           onClick={() => onNavigate("saved")}
-          aria-label="View saved deals"
+          aria-label="Saved products"
         >
           <div style={{ position: "relative", display: "inline-flex" }}>
-            <Bookmark size={19} className="nav-icon" />
-            {savedCount > 0 && (
-              <span className="nav-badge-dot" aria-hidden="true">
-                {savedCount}
-              </span>
+            <Bookmark size={19} strokeWidth={2.2} />
+            {savedCount > 0 && activeTab !== "saved" && (
+              <span className="mockup-nav-dot" aria-hidden="true" />
             )}
           </div>
-          <span className="nav-label">Saved</span>
+          {activeTab === "saved" && <span className="mockup-nav-label">Saved</span>}
+        </button>
+
+        {/* Tab 4: Insights (Analytics & Spreadsheet) */}
+        <button
+          type="button"
+          className={`mockup-nav-item ${activeTab === "insights" ? "active" : ""}`}
+          onClick={() => onNavigate("insights")}
+          aria-label="Price insights and spreadsheet"
+        >
+          <BarChart2 size={19} strokeWidth={2.2} />
+          {activeTab === "insights" && <span className="mockup-nav-label">Insights</span>}
         </button>
       </div>
     </nav>

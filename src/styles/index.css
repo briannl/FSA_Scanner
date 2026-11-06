@@ -3353,3 +3353,494 @@ body {
   align-items: center;
   gap: 0.75rem;
 }
+
+/* ===================================================================
+   13. PIXEL-ACCURATE EDITORIAL REDESIGN (MATCHING ATTACHED MOCKUP)
+   =================================================================== */
+
+/* Design Tokens for Editorial Theme */
+:root {
+  --editorial-bg: #090B0D;
+  --editorial-card: #1C1E23;
+  --editorial-nav: #252830;
+  --editorial-lavender: #A99BFF;
+  --editorial-lime: #D4F49B;
+  --editorial-text-white: #FFFFFF;
+  --editorial-text-muted: #9899A8;
+  --editorial-badge-green-bg: #284B3E;
+  --editorial-badge-green-text: #A2F1BF;
+  --editorial-price-struck: #6E7082;
+  --editorial-retailer-bg: #2C2F38;
+}
+
+[data-theme="dark"] body {
+  background-color: var(--editorial-bg);
+}
+
+/* Mockup Header */
+.mockup-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: var(--editorial-bg);
+  padding: 0.85rem 1.25rem 0.5rem 1.25rem;
+  border: none;
+  transition: background-color var(--trans-fast);
+}
+
+[data-theme="light"] .mockup-header {
+  background-color: #f6f5fb;
+}
+
+.mockup-header-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mockup-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mockup-header-logo-box {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background-color: var(--editorial-lavender);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mockup-header-icon {
+  color: #111318;
+}
+
+.mockup-header-titles {
+  display: flex;
+  flex-direction: column;
+}
+
+.mockup-app-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--editorial-text-white);
+  margin: 0;
+}
+
+[data-theme="light"] .mockup-app-title {
+  color: #111318;
+}
+
+.mockup-app-subtitle {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--editorial-text-muted);
+  margin: 0.1rem 0 0 0;
+}
+
+.mockup-settings-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background-color: var(--editorial-card);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--editorial-text-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+[data-theme="light"] .mockup-settings-btn {
+  background-color: #ffffff;
+  border-color: #e2deee;
+  color: #111318;
+}
+
+.mockup-settings-btn:hover {
+  transform: scale(1.05);
+  background-color: #262930;
+}
+
+/* Editorial Homepage Container */
+.editorial-homepage-container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 0.5rem 1.25rem 4rem 1.25rem;
+}
+
+/* Editorial Hero */
+.editorial-hero {
+  padding: 1.25rem 0 1.5rem 0;
+}
+
+.editorial-date-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--editorial-text-muted);
+}
+
+.editorial-main-headline {
+  font-size: 2.15rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.18;
+  color: var(--editorial-text-white);
+  margin: 0.5rem 0 0.35rem 0;
+}
+
+[data-theme="light"] .editorial-main-headline {
+  color: #111318;
+}
+
+.editorial-sub-headline {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--editorial-text-muted);
+  margin: 0;
+}
+
+/* Summary Cards Grid */
+.editorial-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  margin-bottom: 2rem;
+}
+
+@media (min-width: 768px) {
+  .editorial-summary-grid {
+    gap: 1.25rem;
+  }
+}
+
+.editorial-summary-card {
+  border-radius: 30px;
+  padding: 1.25rem 1.25rem;
+  min-height: 145px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 160ms ease;
+  user-select: none;
+}
+
+.editorial-summary-card:hover {
+  transform: translateY(-2px);
+}
+
+.editorial-summary-card:active {
+  transform: scale(0.98);
+}
+
+.editorial-summary-card.lavender {
+  background-color: var(--editorial-lavender);
+  color: #111318;
+}
+
+.editorial-summary-card.lime {
+  background-color: var(--editorial-lime);
+  color: #111318;
+}
+
+.editorial-summary-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editorial-summary-card-middle {
+  font-size: 2.75rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  margin: 0.35rem 0;
+}
+
+.editorial-summary-card-bottom {
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* Today's Deals Section */
+.editorial-deals-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.editorial-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.15rem;
+}
+
+.editorial-section-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--editorial-text-white);
+  margin: 0;
+}
+
+[data-theme="light"] .editorial-section-title {
+  color: #111318;
+}
+
+.editorial-refresh-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--editorial-text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-pill);
+  transition: opacity var(--trans-fast);
+}
+
+.editorial-refresh-indicator:hover {
+  opacity: 0.8;
+}
+
+.editorial-refresh-icon {
+  color: var(--editorial-lavender);
+}
+
+/* Deal Cards Grid */
+.editorial-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+@media (min-width: 768px) {
+  .editorial-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.35rem;
+  }
+}
+
+/* Deal Card Component */
+.editorial-deal-card {
+  background-color: var(--editorial-card);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 28px;
+  padding: 1.35rem 1.45rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  cursor: pointer;
+  transition: transform var(--trans-fast), box-shadow var(--trans-fast), border-color var(--trans-fast);
+}
+
+[data-theme="light"] .editorial-deal-card {
+  background-color: #ffffff;
+  border-color: #e2deee;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.editorial-deal-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(169, 155, 255, 0.2);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+}
+
+.editorial-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editorial-card-meta-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.editorial-retailer-badge {
+  background-color: var(--editorial-retailer-bg);
+  color: var(--editorial-text-white);
+  font-size: 0.775rem;
+  font-weight: 700;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="light"] .editorial-retailer-badge {
+  background-color: #ede9fe;
+  color: #7c3aed;
+}
+
+.editorial-fsa-label {
+  color: var(--editorial-text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.editorial-discount-badge {
+  background-color: var(--editorial-badge-green-bg);
+  color: var(--editorial-badge-green-text);
+  font-size: 0.875rem;
+  font-weight: 800;
+  padding: 0.35rem 0.85rem;
+  border-radius: 12px;
+  letter-spacing: -0.01em;
+}
+
+.editorial-card-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--editorial-text-white);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+[data-theme="light"] .editorial-card-title {
+  color: #111318;
+}
+
+.editorial-card-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-top: 0.25rem;
+}
+
+.editorial-card-pricing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.editorial-price-current {
+  font-size: 1.95rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--editorial-text-white);
+  line-height: 1;
+}
+
+[data-theme="light"] .editorial-price-current {
+  color: #111318;
+}
+
+.editorial-price-regular {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--editorial-price-struck);
+  text-decoration: line-through;
+}
+
+.editorial-inspect-btn {
+  background-color: var(--editorial-lavender);
+  color: #111318;
+  font-size: 0.875rem;
+  font-weight: 800;
+  padding: 0.65rem 1.25rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: transform var(--trans-fast), background-color var(--trans-fast);
+}
+
+.editorial-inspect-btn:hover {
+  background-color: #c4b5fd;
+  transform: scale(1.03);
+}
+
+/* Floating 4-Destination Navigation matching Mockup */
+.mockup-floating-nav {
+  position: fixed;
+  bottom: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  width: auto;
+  pointer-events: auto;
+}
+
+.mockup-nav-capsule {
+  background-color: var(--editorial-nav);
+  border-radius: 999px;
+  padding: 0.4rem 0.55rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  min-width: 290px;
+}
+
+[data-theme="light"] .mockup-nav-capsule {
+  background-color: #ffffff;
+  border-color: #e2deee;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+}
+
+.mockup-nav-item {
+  background: none;
+  border: none;
+  padding: 0.65rem 1.1rem;
+  border-radius: 999px;
+  color: var(--editorial-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  transition: all var(--trans-fast);
+}
+
+.mockup-nav-item:hover {
+  color: var(--editorial-text-white);
+}
+
+[data-theme="light"] .mockup-nav-item:hover {
+  color: #111318;
+}
+
+.mockup-nav-item.active {
+  background-color: var(--editorial-lavender);
+  color: #111318;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 0.65rem 1.35rem;
+}
+
+.mockup-nav-label {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.mockup-nav-dot {
+  position: absolute;
+  top: -2px;
+  right: -5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--editorial-lavender);
+}
