@@ -1,24 +1,28 @@
 import React, { useState, useMemo } from "react";
-import { ProductObservation, Retailer, RETAILER_REGISTRY } from "../types/product";
-import { FSAFEDS_CATEGORIES, FsafedsCategory } from "../types/fsafeds";
-import {
-  GroupedProduct,
-  groupProductsAcrossRetailers,
-  parseUnitPriceValue
-} from "../services/productMatcher";
-import { findNearbyStores } from "../services/storeLocator";
+import { ProductObservation, Retailer } from "../types/product";
+import { groupProductsAcrossRetailers, GroupedProduct } from "../services/productMatcher";
+import { StoreFilterSheet } from "./StoreFilterSheet";
+import { CategoryFilterSheet } from "./CategoryFilterSheet";
+import { FilterOptionsSheet } from "./FilterOptionsSheet";
 import {
   Search,
-  MapPin,
+  SlidersHorizontal,
+  Store,
+  FolderTree,
+  ChevronRight,
   ArrowUpDown,
-  CheckCircle,
-  ChevronRight
+  Bookmark,
+  Package,
+  CheckCircle2,
+  X
 } from "lucide-react";
 
 interface DiscoverViewProps {
   products: ProductObservation[];
   onInspectProduct: (product: ProductObservation) => void;
-  onCompareProduct: (grouped: GroupedProduct) => void;
+  onCompareProduct: (product: GroupedProduct) => void;
+  isSaved?: (id: string) => boolean;
+  onToggleSave?: (product: ProductObservation) => void;
   isMobile?: boolean;
 }
 
@@ -26,450 +30,429 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
   products,
   onInspectProduct,
   onCompareProduct,
+  isSaved = () => false,
+  onToggleSave = () => {},
   isMobile = false
 }) => {
+  // Search & Sorting state
   const [searchText, setSearchText] = useState("");
-  const [selectedRetailer, setSelectedRetailer] = useState<"All" | Retailer>("All");
-  const [selectedCategory, setSelectedCategory] = useState<"All" | FsafedsCategory>("All");
-  const [discountOnly, setDiscountOnly] = useState(false);
-  const [sortBy, setSortBy] = useState<
-    "savings_desc" | "price_asc" | "price_desc" | "unit_price" | "offers_count"
-  >("savings_desc");
-  const [zipCode, setZipCode] = useState("90210");
-  const [showNearbyStores, setShowNearbyStores] = useState(false);
+  const [sortBy, setSortBy] = useState<"savings" | "price_asc" | "unit_price" | "name">("savings");
 
-  // Grouped products cross-retailers
-  const allGrouped = useMemo(() => groupProductsAcrossRetailers(products), [products]);
+  // Sheet filter states (Multiselect arrays, empty means All)
+  const [selectedRetailers, setSelectedRetailers] = useState<Retailer[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [discountedOnly, setDiscountedOnly] = useState<boolean>(true);
+  const [priceDropsOnly, setPriceDropsOnly] = useState<boolean>(false);
+  const [minDiscountPercent, setMinDiscountPercent] = useState<number>(0);
+  const [zipCode, setZipCode] = useState<string>("90210");
 
-  // Nearby stores based on configured ZIP
-  const nearbyStores = useMemo(() => findNearbyStores(zipCode), [zipCode]);
+  // Sheet visibility states
+  const [isStoreSheetOpen, setIsStoreSheetOpen] = useState(false);
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
+  const [isOptionsSheetOpen, setIsOptionsSheetOpen] = useState(false);
 
-  // Filtered grouped products
+  // 1. Group all products into normalized multi-store items
+  const allGrouped = useMemo(() => {
+    return groupProductsAcrossRetailers(products);
+  }, [products]);
+
+  // 2. Accurate Counts derived from currently eligible product data
+  const retailerCounts = useMemo(() => {
+    const counts: Record<Retailer, number> = {
+      Costco: 0,
+      CVS: 0,
+      Amazon: 0,
+      Ralphs: 0,
+      Vons: 0,
+      Instacart: 0,
+      "Smart & Final": 0,
+      "H Mart": 0,
+      "99 Ranch": 0,
+      "Trader Joe's": 0
+    };
+    allGrouped.forEach((item) => {
+      const seen = new Set<Retailer>();
+      item.offers.forEach((o) => {
+        if (!seen.has(o.retailer)) {
+          seen.add(o.retailer);
+          counts[o.retailer] = (counts[o.retailer] || 0) + 1;
+        }
+      });
+    });
+    return counts;
+  }, [allGrouped]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    allGrouped.forEach((item) => {
+      counts[item.category] = (counts[item.category] || 0) + 1;
+    });
+    return counts;
+  }, [allGrouped]);
+
+  // 3. Filter grouped items by active sheets & search
   const filteredProducts = useMemo(() => {
     return allGrouped.filter((item) => {
-      // 1. Text search
+      // Free-text query
       if (searchText.trim()) {
-        const query = searchText.toLowerCase();
-        const matchesName = item.name.toLowerCase().includes(query);
-        const matchesBrand = item.brand.toLowerCase().includes(query);
-        const matchesCat = item.category.toLowerCase().includes(query);
-        const matchesOffers = item.offers.some((o) => o.retailer.toLowerCase().includes(query));
-        if (!matchesName && !matchesBrand && !matchesCat && !matchesOffers) return false;
+        const q = searchText.toLowerCase();
+        const matchesName = item.name.toLowerCase().includes(q);
+        const matchesBrand = item.brand.toLowerCase().includes(q);
+        const matchesCat = item.category.toLowerCase().includes(q);
+        const matchesOffers = item.offers.some(
+          (o) =>
+            o.retailer.toLowerCase().includes(q) ||
+            o.promoDetails?.toLowerCase().includes(q)
+        );
+        if (!matchesName && !matchesBrand && !matchesCat && !matchesOffers) {
+          return false;
+        }
       }
 
-      // 2. Retailer filter
-      if (selectedRetailer !== "All") {
-        const hasRetailer = item.offers.some((o) => o.retailer === selectedRetailer);
-        if (!hasRetailer) return false;
+      // Retailers multiselect
+      if (selectedRetailers.length > 0) {
+        const hasSelectedRetailer = item.offers.some((o) =>
+          selectedRetailers.includes(o.retailer)
+        );
+        if (!hasSelectedRetailer) return false;
       }
 
-      // 3. Category filter
-      if (selectedCategory !== "All") {
-        if (item.category !== selectedCategory) return false;
+      // Categories multiselect
+      if (selectedCategories.length > 0) {
+        if (!selectedCategories.includes(item.category)) return false;
       }
 
-      // 4. Discount only
-      if (discountOnly) {
-        const hasDiscount = item.offers.some((o) => o.discountAmount > 0 || o.discountPercent > 0);
-        if (!hasDiscount) return false;
+      // Discounted Only
+      if (discountedOnly) {
+        const hasDiscount = item.offers.some(
+          (o) =>
+            (o.regularPrice !== null && o.currentPrice !== null && o.regularPrice > o.currentPrice) ||
+            (o.promoType !== "None" && o.promoType !== "Standard Markdown")
+        );
+        if (!hasDiscount && item.maxSavingsPercent <= 0) return false;
+      }
+
+      // Minimum Discount %
+      if (minDiscountPercent > 0) {
+        if (item.maxSavingsPercent < minDiscountPercent) return false;
+      }
+
+      // Recent Price Drops
+      if (priceDropsOnly) {
+        const hasDrop = item.offers.some((o) =>
+          products.some((p) => p.id === o.id && p.isRecentDrop)
+        );
+        if (!hasDrop) return false;
       }
 
       return true;
     });
-  }, [allGrouped, searchText, selectedRetailer, selectedCategory, discountOnly]);
+  }, [
+    allGrouped,
+    searchText,
+    selectedRetailers,
+    selectedCategories,
+    discountedOnly,
+    minDiscountPercent,
+    priceDropsOnly
+  ]);
 
-  // Sorted grouped products
+  // 4. Sort grouped products
   const sortedProducts = useMemo(() => {
     return [...filteredProducts].sort((a, b) => {
+      if (sortBy === "savings") {
+        return b.maxSavingsPercent - a.maxSavingsPercent;
+      }
       if (sortBy === "price_asc") {
         return (a.lowestPrice || 0) - (b.lowestPrice || 0);
       }
-      if (sortBy === "price_desc") {
-        return (b.lowestPrice || 0) - (a.lowestPrice || 0);
-      }
       if (sortBy === "unit_price") {
-        const uA = parseUnitPriceValue(a.lowestUnitPrice) || Infinity;
-        const uB = parseUnitPriceValue(b.lowestUnitPrice) || Infinity;
-        return uA - uB;
+        const getVal = (item: GroupedProduct) => {
+          if (!item.lowestUnitPrice) return 999999;
+          const match = item.lowestUnitPrice.match(/\$([0-9.]+)/);
+          return match ? parseFloat(match[1]) : 999999;
+        };
+        return getVal(a) - getVal(b);
       }
-      if (sortBy === "offers_count") {
-        return b.offers.length - a.offers.length;
+      if (sortBy === "name") {
+        return a.name.localeCompare(b.name);
       }
-      // Default: savings_desc
-      return b.maxSavingsPercent - a.maxSavingsPercent;
+      return 0;
     });
   }, [filteredProducts, sortBy]);
 
-  const allRetailers: Retailer[] = [
-    "Costco",
-    "CVS",
-    "Amazon",
-    "Ralphs",
-    "Vons",
-    "Instacart",
-    "Smart & Final",
-    "H Mart",
-    "99 Ranch",
-    "Trader Joe's"
-  ];
+  // Toggle handlers for sheets
+  const handleToggleRetailer = (retailer: Retailer) => {
+    setSelectedRetailers((prev) =>
+      prev.includes(retailer) ? prev.filter((r) => r !== retailer) : [...prev, retailer]
+    );
+  };
+
+  const handleToggleCategory = (cat: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const handleResetAdvanced = () => {
+    setDiscountedOnly(false);
+    setPriceDropsOnly(false);
+    setMinDiscountPercent(0);
+    setZipCode("90210");
+  };
+
+  const hasAdvancedFilters =
+    !discountedOnly || priceDropsOnly || minDiscountPercent > 0 || zipCode !== "90210";
 
   return (
-    <div className="discover-container" style={{ maxWidth: "1600px", margin: "0 auto", padding: "0 1.25rem 2rem 1.25rem" }}>
-      {/* Top Discover Bar: Search, ZIP Code, Toggles */}
-      <div
-        className="discover-filter-card"
-        style={{
-          backgroundColor: "var(--bg-card)",
-          border: "1px solid var(--border-subtle)",
-          borderRadius: "var(--radius-lg)",
-          padding: "1.15rem 1.35rem",
-          marginBottom: "1.25rem",
-          display: "flex",
-          flexDirection: "column",
-          gap: "1rem"
-        }}
-      >
-        <div style={{ display: "flex", gap: "0.85rem", flexWrap: "wrap", alignItems: "center" }}>
-          {/* Search Input */}
-          <div style={{ flex: 1, minWidth: "240px", position: "relative" }}>
-            <Search
-              size={16}
-              style={{ position: "absolute", left: "1rem", top: "50%", transform: "translateY(-50%)", color: "var(--text-subtle)" }}
-            />
-            <input
-              type="text"
-              className="pill-input font-sans"
-              placeholder="Search multi-store products, brands, active ingredients..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ width: "100%", paddingLeft: "2.5rem" }}
-            />
+    <div className="discover-container" style={{ maxWidth: "1400px", margin: "0 auto", padding: "0 1.25rem 3rem 1.25rem" }}>
+      {/* 1. Header & Title with Compact Status */}
+      <div className="discover-header-block">
+        <div className="discover-header-top">
+          <div>
+            <h2 className="discover-title">Discover Stores & Compare</h2>
+            <p className="discover-subtitle">
+              Cross-store prices across 10 retailers • Strict IRS §213(d) physical medical products
+            </p>
           </div>
+        </div>
 
-          {/* Configurable ZIP Code Filter */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.35rem",
-                backgroundColor: "var(--bg-subtle)",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-pill)",
-                padding: "0.25rem 0.75rem",
-                fontSize: "0.825rem",
-                color: "var(--text-main)"
-              }}
+        {/* 2. Full-Width Search Input */}
+        <div className="discover-search-wrap">
+          <Search size={16} className="discover-search-icon" />
+          <input
+            type="text"
+            className="pill-input font-sans discover-search-input"
+            placeholder="Search products, brands, active ingredients..."
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+          />
+          {searchText && (
+            <button
+              type="button"
+              className="discover-search-clear"
+              onClick={() => setSearchText("")}
+              aria-label="Clear search"
             >
-              <MapPin size={14} style={{ color: "var(--lavender)" }} />
-              <span style={{ fontWeight: 600 }}>ZIP:</span>
-              <input
-                type="text"
-                className="font-mono"
-                maxLength={5}
-                value={zipCode}
-                onChange={(e) => setZipCode(e.target.value.replace(/\D/g, ""))}
-                style={{
-                  width: "55px",
-                  background: "transparent",
-                  border: "none",
-                  outline: "none",
-                  color: "var(--text-main)",
-                  fontWeight: 700
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowNearbyStores(!showNearbyStores)}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "var(--lavender)",
-                  cursor: "pointer",
-                  fontSize: "0.75rem",
-                  fontWeight: 600,
-                  padding: "0.1rem 0.35rem",
-                  borderRadius: "var(--radius-pill)"
-                }}
-              >
-                {showNearbyStores ? "Hide Stores" : `${nearbyStores.length} Stores`}
-              </button>
-            </div>
+              <X size={15} />
+            </button>
+          )}
+        </div>
+
+        {/* 3. Three Compact Filter Buttons: Store, Category, Filters */}
+        <div className="compact-filters-row">
+          {/* Store Filter Button */}
+          <button
+            type="button"
+            className={`compact-filter-btn ${selectedRetailers.length > 0 ? "active" : ""}`}
+            onClick={() => setIsStoreSheetOpen(true)}
+          >
+            <Store size={14} />
+            <span>
+              Store {selectedRetailers.length > 0 ? `(${selectedRetailers.length})` : ""}
+            </span>
+          </button>
+
+          {/* Category Filter Button */}
+          <button
+            type="button"
+            className={`compact-filter-btn ${selectedCategories.length > 0 ? "active" : ""}`}
+            onClick={() => setIsCategorySheetOpen(true)}
+          >
+            <FolderTree size={14} />
+            <span>
+              Category {selectedCategories.length > 0 ? `(${selectedCategories.length})` : ""}
+            </span>
+          </button>
+
+          {/* Advanced Filters Button */}
+          <button
+            type="button"
+            className={`compact-filter-btn ${hasAdvancedFilters ? "active" : ""}`}
+            onClick={() => setIsOptionsSheetOpen(true)}
+          >
+            <SlidersHorizontal size={14} />
+            <span>
+              Filters {hasAdvancedFilters ? "•" : ""}
+            </span>
+          </button>
+        </div>
+
+        {/* 4. Result Count & Sort Menu */}
+        <div className="discover-meta-row">
+          <div className="discover-result-count">
+            Showing <strong>{sortedProducts.length}</strong> verified products
           </div>
 
-          {/* Sort Selector */}
-          <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-            <ArrowUpDown size={14} style={{ color: "var(--text-subtle)" }} />
+          <div className="discover-sort-cluster">
+            <ArrowUpDown size={13} style={{ color: "var(--text-muted)" }} />
             <select
               className="pill-select font-sans"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              style={{
-                backgroundColor: "var(--bg-subtle)",
-                border: "1px solid var(--border-subtle)",
-                borderRadius: "var(--radius-pill)",
-                padding: "0.45rem 0.85rem",
-                fontSize: "0.825rem",
-                color: "var(--text-main)",
-                outline: "none",
-                cursor: "pointer"
-              }}
+              style={{ fontSize: "0.775rem", padding: "0.3rem 0.65rem" }}
             >
-              <option value="savings_desc">Highest % Savings</option>
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
-              <option value="unit_price">Unit Price: Low to High</option>
-              <option value="offers_count">Most Store Offers</option>
+              <option value="savings">Highest % Savings</option>
+              <option value="price_asc">Lowest Price</option>
+              <option value="unit_price">Best Unit Price</option>
+              <option value="name">Name (A-Z)</option>
             </select>
           </div>
-
-          {/* On Sale Only Switch */}
-          <label style={{ display: "inline-flex", alignItems: "center", gap: "0.45rem", cursor: "pointer", fontSize: "0.825rem" }}>
-            <input
-              type="checkbox"
-              checked={discountOnly}
-              onChange={(e) => setDiscountOnly(e.target.checked)}
-              style={{ accentColor: "var(--lime)" }}
-            />
-            <span style={{ fontWeight: 600 }}>Discounted Only</span>
-          </label>
         </div>
+      </div>
 
-        {/* Expandable Nearby Stores Ribbon */}
-        {showNearbyStores && (
-          <div
-            style={{
-              padding: "0.85rem 1rem",
-              borderRadius: "var(--radius-md)",
-              backgroundColor: "var(--bg-subtle)",
-              border: "1px solid var(--border-subtle)",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.6rem"
+      {/* 5. Product Results Feed */}
+      {sortedProducts.length === 0 ? (
+        <div className="mobile-empty-state" style={{ marginTop: "2rem" }}>
+          <Package size={36} style={{ margin: "0 auto 0.75rem auto", opacity: 0.4, color: "var(--lavender)" }} />
+          <h3 style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-main)" }}>No products matched your filters</h3>
+          <p style={{ fontSize: "0.825rem", marginTop: "0.25rem", color: "var(--text-muted)" }}>
+            Try resetting your active store or category selections.
+          </p>
+          <button
+            type="button"
+            className="btn btn-secondary font-sans"
+            onClick={() => {
+              setSelectedRetailers([]);
+              setSelectedCategories([]);
+              setSearchText("");
             }}
+            style={{ marginTop: "1rem", borderRadius: "var(--radius-pill)", padding: "0.5rem 1.25rem", fontSize: "0.8rem" }}
           >
-            <div style={{ fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-              Physical Participating Stores Near ZIP {zipCode}
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "0.5rem" }}>
-              {nearbyStores.map((s) => (
-                <div
-                  key={s.id}
-                  style={{
-                    padding: "0.5rem 0.75rem",
-                    borderRadius: "var(--radius-sm)",
-                    backgroundColor: "var(--bg-card)",
-                    border: "1px solid var(--border-subtle)",
-                    fontSize: "0.775rem"
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontWeight: 700 }}>
-                    <span>{s.name}</span>
-                    <span className="font-mono text-lime" style={{ fontSize: "0.7rem" }}>{s.distanceMiles} mi</span>
-                  </div>
-                  <div style={{ color: "var(--text-muted)", fontSize: "0.725rem", marginTop: "0.15rem" }}>
-                    {s.address}, {s.city}
-                  </div>
-                  <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.3rem" }}>
-                    {s.fulfillmentMethods.map((m) => (
-                      <span key={m} className="badge badge-subtle font-sans" style={{ fontSize: "0.65rem", padding: "0.1rem 0.35rem" }}>
-                        {m}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Retailer Chips Filter */}
-        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", marginRight: "0.25rem" }}>
-            Stores:
-          </span>
-          <button
-            type="button"
-            className={`pill-tab ${selectedRetailer === "All" ? "active" : ""}`}
-            onClick={() => setSelectedRetailer("All")}
-            style={{ padding: "0.25rem 0.75rem", fontSize: "0.775rem" }}
-          >
-            All Stores ({allRetailers.length})
+            Clear Active Filters
           </button>
-          {allRetailers.map((r) => {
-            const count = allGrouped.filter((g) => g.offers.some((o) => o.retailer === r)).length;
-            const meta = RETAILER_REGISTRY[r];
-            return (
-              <button
-                key={r}
-                type="button"
-                className={`pill-tab ${selectedRetailer === r ? "active" : ""}`}
-                onClick={() => setSelectedRetailer(selectedRetailer === r ? "All" : r)}
-                style={{ padding: "0.25rem 0.75rem", fontSize: "0.775rem" }}
-                title={`${meta.description} (Capability: ${meta.capability})`}
-              >
-                {r} <span style={{ opacity: 0.65, fontSize: "0.7rem", marginLeft: "2px" }}>({count})</span>
-              </button>
-            );
-          })}
         </div>
-
-        {/* FSAFEDS 12 Categories Filter Pills */}
-        <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", marginRight: "0.25rem" }}>
-            FSAFEDS Categories:
-          </span>
-          <button
-            type="button"
-            className={`pill-tab ${selectedCategory === "All" ? "active" : ""}`}
-            onClick={() => setSelectedCategory("All")}
-            style={{ padding: "0.25rem 0.75rem", fontSize: "0.775rem" }}
-          >
-            All Categories
-          </button>
-          {FSAFEDS_CATEGORIES.map((cat) => {
-            const count = allGrouped.filter((g) => g.category === cat).length;
-            return (
-              <button
-                key={cat}
-                type="button"
-                className={`pill-tab ${selectedCategory === cat ? "active" : ""}`}
-                onClick={() => setSelectedCategory(selectedCategory === cat ? "All" : cat)}
-                style={{ padding: "0.25rem 0.75rem", fontSize: "0.775rem" }}
-              >
-                {cat} {count > 0 && <span style={{ opacity: 0.65, fontSize: "0.7rem" }}>({count})</span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Results Count & Strict Eligibility Callout */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem", flexWrap: "wrap", gap: "0.5rem" }}>
-        <div style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>
-          Showing <strong>{sortedProducts.length}</strong> verified FSAFEDS physical health products
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.75rem", color: "var(--text-subtle)" }}>
-          <CheckCircle size={14} style={{ color: "var(--lime)" }} />
-          <span>Strict FSAFEDS & IRS 213(d) Physical Products Only (No general grocery or cosmetics)</span>
-        </div>
-      </div>
-
-      {/* View: Mobile Cards or Desktop Table */}
-      {isMobile ? (
-        // Mobile Cards
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
+      ) : isMobile ? (
+        /* Mobile Cards Feed */
+        <div className="mobile-cards-grid">
           {sortedProducts.map((item) => {
             const rawProduct = products.find((p) => p.name === item.name) || products[0];
+            const saved = rawProduct ? isSaved(rawProduct.id) : false;
+
             return (
-              <div
+              <article
                 key={item.id}
-                style={{
-                  backgroundColor: "var(--bg-card)",
-                  border: "1px solid var(--border-subtle)",
-                  borderRadius: "var(--radius-lg)",
-                  padding: "1.15rem",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "0.75rem"
-                }}
+                className="minimal-product-card"
+                onClick={() => onCompareProduct(item)}
               >
-                {/* Header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
-                  <div>
-                    <div style={{ display: "flex", gap: "0.35rem", alignItems: "center", marginBottom: "0.3rem", flexWrap: "wrap" }}>
-                      <span className="badge badge-lavender font-sans" style={{ borderRadius: "var(--radius-pill)", fontSize: "0.68rem" }}>
-                        {item.category}
+                <div className="minimal-card-main">
+                  <div className="minimal-card-thumb">
+                    <div className="minimal-card-icon-wrap">
+                      <Package size={20} />
+                    </div>
+                  </div>
+
+                  <div className="minimal-card-body">
+                    <div className="minimal-card-meta">
+                      <span className="minimal-card-retailer text-lime font-mono" style={{ fontWeight: 700 }}>
+                        Best at {item.bestRetailer}
                       </span>
-                      {item.isMultiStore && (
-                        <span className="badge badge-lime font-sans" style={{ borderRadius: "var(--radius-pill)", fontSize: "0.68rem" }}>
-                          {item.offers.length} Stores Available
+                      <span className="minimal-meta-dot">•</span>
+                      <span className="minimal-fsa-verified">
+                        <CheckCircle2 size={12} className="fsa-check-icon" />
+                        <span>{item.category}</span>
+                      </span>
+                    </div>
+
+                    <h3 className="minimal-card-title">{item.name}</h3>
+
+                    <div className="minimal-card-pricing">
+                      <div className="minimal-price-cluster">
+                        <span className="minimal-price-current font-mono text-lime">
+                          ${item.lowestPrice?.toFixed(2)}
+                        </span>
+                        {item.maxSavingsPercent > 0 && (
+                          <span className="minimal-discount-pill font-mono">
+                            Save {item.maxSavingsPercent}%
+                          </span>
+                        )}
+                      </div>
+
+                      {item.lowestUnitPrice && (
+                        <span className="minimal-unit-price font-mono">
+                          {item.lowestUnitPrice}
+                          {item.hasDifferentPackSizes && (
+                            <span style={{ color: "var(--amber)", marginLeft: "0.3rem" }}>
+                              (packs differ)
+                            </span>
+                          )}
                         </span>
                       )}
                     </div>
-                    <h3 style={{ fontSize: "1rem", fontWeight: 700, margin: 0, color: "var(--text-main)" }}>
-                      {item.name}
-                    </h3>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
-                      Brand: {item.brand}
+
+                    {/* Store offer chips preview */}
+                    <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.45rem", flexWrap: "wrap" }}>
+                      {item.offers.map((o) => (
+                        <span
+                          key={o.id}
+                          className={`badge ${o.isBestOffer ? "badge-lime" : "badge-subtle"} font-sans`}
+                          style={{ borderRadius: "var(--radius-pill)", fontSize: "0.65rem", padding: "0.1rem 0.45rem" }}
+                        >
+                          {o.retailer}: ${o.currentPrice}
+                        </span>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Best Offer & Unit Price */}
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    backgroundColor: "var(--bg-subtle)",
-                    borderRadius: "var(--radius-md)",
-                    padding: "0.65rem 0.85rem"
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>
-                      Lowest Price at <strong>{item.bestRetailer}</strong>
-                    </div>
-                    <div className="font-mono text-lime" style={{ fontSize: "1.3rem", fontWeight: 800 }}>
-                      ${item.lowestPrice?.toFixed(2)}
-                    </div>
-                  </div>
-
-                  {item.lowestUnitPrice && (
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)" }}>Best Unit Price</div>
-                      <div className="font-mono" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-main)" }}>
-                        {item.lowestUnitPrice}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Different pack sizes alert */}
-                {item.hasDifferentPackSizes && (
-                  <div style={{ fontSize: "0.72rem", color: "var(--amber)" }}>
-                    * Pack sizes differ across stores. Compare unit price.
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div style={{ display: "flex", gap: "0.5rem" }}>
+                <div className="minimal-card-footer">
                   <button
                     type="button"
-                    className="btn btn-secondary font-sans"
-                    onClick={() => onInspectProduct(rawProduct)}
-                    style={{ flex: 1, borderRadius: "var(--radius-pill)", padding: "0.5rem", fontSize: "0.8rem" }}
-                  >
-                    Inspect
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-primary font-sans"
-                    onClick={() => onCompareProduct(item)}
-                    style={{
-                      flex: 1.5,
-                      borderRadius: "var(--radius-pill)",
-                      padding: "0.5rem",
-                      fontSize: "0.8rem",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "0.3rem"
+                    className={`minimal-save-btn ${saved ? "saved" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (rawProduct) onToggleSave(rawProduct);
                     }}
+                    title={saved ? "Remove from saved" : "Save deal"}
                   >
-                    <span>Compare ({item.offers.length})</span>
-                    <ChevronRight size={14} />
+                    <Bookmark
+                      size={16}
+                      fill={saved ? "var(--lavender)" : "none"}
+                      stroke={saved ? "var(--lavender)" : "currentColor"}
+                    />
+                    <span className="minimal-action-text">{saved ? "Saved" : "Save"}</span>
                   </button>
+
+                  <div className="minimal-footer-right">
+                    <button
+                      type="button"
+                      className="minimal-inspect-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onInspectProduct(rawProduct);
+                      }}
+                    >
+                      Inspect
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn btn-primary font-sans"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCompareProduct(item);
+                      }}
+                      style={{
+                        borderRadius: "var(--radius-pill)",
+                        padding: "0.35rem 0.85rem",
+                        fontSize: "0.775rem",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.25rem",
+                        fontWeight: 700
+                      }}
+                    >
+                      <span>Compare ({item.offers.length})</span>
+                      <ChevronRight size={13} />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              </article>
             );
           })}
         </div>
       ) : (
-        // Desktop Table View
+        /* Desktop Table View */
         <div
           style={{
             backgroundColor: "var(--bg-card)",
@@ -502,7 +485,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                     onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--bg-subtle)")}
                     onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
                   >
-                    {/* Title & Category */}
                     <td style={{ padding: "1rem 1.15rem", verticalAlign: "middle" }}>
                       <div style={{ fontWeight: 700, color: "var(--text-main)", marginBottom: "0.25rem" }}>
                         {item.name}
@@ -517,7 +499,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                       </div>
                     </td>
 
-                    {/* Best Price */}
                     <td style={{ padding: "1rem", verticalAlign: "middle" }}>
                       <div className="font-mono text-lime" style={{ fontSize: "1.15rem", fontWeight: 800 }}>
                         ${item.lowestPrice?.toFixed(2)}
@@ -527,7 +508,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                       </div>
                     </td>
 
-                    {/* Unit Price */}
                     <td style={{ padding: "1rem", verticalAlign: "middle" }}>
                       {item.lowestUnitPrice ? (
                         <div className="font-mono" style={{ fontSize: "0.85rem", fontWeight: 600 }}>
@@ -543,7 +523,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                       )}
                     </td>
 
-                    {/* Cross-Store Spread */}
                     <td style={{ padding: "1rem", verticalAlign: "middle" }}>
                       {item.maxSavingsPercent > 0 ? (
                         <div>
@@ -559,7 +538,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                       )}
                     </td>
 
-                    {/* Store Offers */}
                     <td style={{ padding: "1rem", verticalAlign: "middle" }}>
                       <div style={{ display: "flex", gap: "0.3rem", flexWrap: "wrap", maxWidth: "200px" }}>
                         {item.offers.map((o) => (
@@ -575,7 +553,6 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                       </div>
                     </td>
 
-                    {/* Actions */}
                     <td style={{ padding: "1rem 1.15rem", verticalAlign: "middle", textAlign: "right", whiteSpace: "nowrap" }}>
                       <button
                         type="button"
@@ -596,7 +573,8 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
                           fontSize: "0.775rem",
                           display: "inline-flex",
                           alignItems: "center",
-                          gap: "0.25rem"
+                          gap: "0.25rem",
+                          fontWeight: 700
                         }}
                       >
                         <span>Compare ({item.offers.length})</span>
@@ -610,6 +588,41 @@ export const DiscoverView: React.FC<DiscoverViewProps> = ({
           </table>
         </div>
       )}
+
+      {/* 3 Bottom Sheets */}
+      <StoreFilterSheet
+        isOpen={isStoreSheetOpen}
+        onClose={() => setIsStoreSheetOpen(false)}
+        selectedRetailers={selectedRetailers}
+        onToggleRetailer={handleToggleRetailer}
+        onSelectAll={() => setSelectedRetailers([])}
+        onClearAll={() => setSelectedRetailers([])}
+        counts={retailerCounts}
+      />
+
+      <CategoryFilterSheet
+        isOpen={isCategorySheetOpen}
+        onClose={() => setIsCategorySheetOpen(false)}
+        selectedCategories={selectedCategories}
+        onToggleCategory={handleToggleCategory}
+        onSelectAll={() => setSelectedCategories([])}
+        onClearAll={() => setSelectedCategories([])}
+        counts={categoryCounts}
+      />
+
+      <FilterOptionsSheet
+        isOpen={isOptionsSheetOpen}
+        onClose={() => setIsOptionsSheetOpen(false)}
+        discountedOnly={discountedOnly}
+        onDiscountedOnlyChange={setDiscountedOnly}
+        priceDropsOnly={priceDropsOnly}
+        onPriceDropsOnlyChange={setPriceDropsOnly}
+        minDiscountPercent={minDiscountPercent}
+        onMinDiscountPercentChange={setMinDiscountPercent}
+        zipCode={zipCode}
+        onZipCodeChange={setZipCode}
+        onReset={handleResetAdvanced}
+      />
     </div>
   );
 };

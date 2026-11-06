@@ -3,34 +3,24 @@ import { TrackerStatus, StructuredError } from "../types/product";
 import {
   ShieldCheck,
   RefreshCw,
-  PlusCircle,
-  Download,
   Sun,
   Moon,
-  AlertTriangle,
   ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  BookmarkCheck,
-  MoreVertical,
-  Layers
+  ChevronUp
 } from "lucide-react";
-import { formatSourceLabel } from "../utils/sourceTypeHelper";
 
 interface HeaderStatusBarProps {
   status: TrackerStatus;
   isRefreshing: boolean;
   onRefreshAll: () => void;
-  onOpenImportModal: () => void;
-  onExportCsv: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
+  activeMode: "deals" | "discover" | "saved";
+  onNavigate: (mode: "deals" | "discover" | "saved") => void;
+  savedCount?: number;
   isMobile?: boolean;
 }
 
-/**
- * Extracts and parses structured diagnostic errors cleanly without string concatenation defects.
- */
 function extractDiagnosticErrors(status: TrackerStatus): StructuredError[] {
   const list: StructuredError[] = [];
 
@@ -38,7 +28,6 @@ function extractDiagnosticErrors(status: TrackerStatus): StructuredError[] {
     retailer: "CVS" | "Costco",
     retStatus: TrackerStatus["cvs"] | TrackerStatus["costco"]
   ) => {
-    // 1. If explicit structuredErrors array is present, use it directly
     if (retStatus.structuredErrors && retStatus.structuredErrors.length > 0) {
       list.push(...retStatus.structuredErrors);
       return;
@@ -51,7 +40,6 @@ function extractDiagnosticErrors(status: TrackerStatus): StructuredError[] {
 
     if (!hasIssue) return;
 
-    // 2. Parse from errorMessage if present
     if (retStatus.errorMessage) {
       const parts = retStatus.errorMessage.split(/;\s*|\n+/).filter(Boolean);
       for (const part of parts) {
@@ -107,41 +95,34 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
   status,
   isRefreshing,
   onRefreshAll,
-  onOpenImportModal,
-  onExportCsv,
   isDarkMode,
   onToggleTheme,
+  activeMode,
+  onNavigate,
+  savedCount = 0,
   isMobile = false
 }) => {
   const [showDiagnostics, setShowDiagnostics] = useState(false);
-  const [isOverflowOpen, setIsOverflowOpen] = useState(false);
-  const overflowMenuRef = useRef<HTMLDivElement>(null);
+  const diagnosticsRef = useRef<HTMLDivElement>(null);
 
-  // Close overflow menu on outside click or Escape
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (overflowMenuRef.current && !overflowMenuRef.current.contains(e.target as Node)) {
-        setIsOverflowOpen(false);
-      }
-    };
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setIsOverflowOpen(false);
-        setShowDiagnostics(false);
-      }
+      if (e.key === "Escape") setShowDiagnostics(false);
     };
-    if (isOverflowOpen) {
-      document.addEventListener("mousedown", handleOutsideClick);
+    if (showDiagnostics) {
       document.addEventListener("keydown", handleKeyDown);
     }
-    return () => {
-      document.removeEventListener("mousedown", handleOutsideClick);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOverflowOpen]);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [showDiagnostics]);
 
+  const diagnostics = extractDiagnosticErrors(status);
+  const isCvsLimited = status.cvs.status === "blocked_waf" || status.cvs.status === "rate_limited";
+  const isCostcoLimited = status.costco.status === "blocked_waf" || status.costco.status === "rate_limited";
+  const isRateLimited = isCvsLimited || isCostcoLimited;
+
+  // Format relative time
   const formatTimeAgo = (isoString: string | null) => {
-    if (!isoString) return "Never";
+    if (!isoString) return "Recently";
     try {
       const diffMs = Date.now() - new Date(isoString).getTime();
       const diffMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
@@ -155,282 +136,142 @@ export const HeaderStatusBar: React.FC<HeaderStatusBarProps> = ({
     }
   };
 
-  const getHealthDotClass = (retailerStatus: string) => {
-    if (retailerStatus === "success") return "pulse";
-    if (retailerStatus === "blocked_waf" || retailerStatus === "rate_limited") return "waf";
-    return "error";
-  };
-
-  const diagnostics = extractDiagnosticErrors(status);
-  const hasCvsError =
-    status.cvs.status === "error" ||
-    status.cvs.status === "blocked_waf" ||
-    status.cvs.status === "rate_limited";
-  const hasCostcoError =
-    status.costco.status === "error" ||
-    status.costco.status === "blocked_waf" ||
-    status.costco.status === "rate_limited";
-  const anyBotGuardIssue = hasCvsError || hasCostcoError || diagnostics.length > 0;
-
   return (
-    <header className="app-header">
-      <div className="header-inner">
-        <div className="brand-section">
-          <a href="#" className="brand-anchor" onClick={(e) => e.preventDefault()}>
-            <div className="brand-logo-icon">
-              <ShieldCheck size={20} strokeWidth={2.2} />
-            </div>
-            <div>
-              <div className="brand-name">
-                FSA Deal Tracker
-                <span className="fsa-verified-tag">FSA / HSA</span>
-              </div>
-            </div>
-          </a>
-
-          {/* Retailer Live Heartbeat Pills (Desktop & Tablet) */}
-          {!isMobile && (
-            <div className="retailer-health-group">
-              <div
-                className="health-pill"
-                title={`CVS: ${status.cvs.status === "success" ? "Online" : status.cvs.status} (${status.cvs.itemCount} items)`}
-              >
-                <span className="pulsing-dot-wrap">
-                  <span className={`pulsing-dot ${getHealthDotClass(status.cvs.status)}`} />
-                </span>
-                <span>CVS:</span>
-                <strong>{status.cvs.status === "success" ? "Online" : "Protected"}</strong>
-                <span style={{ opacity: 0.6 }}>•</span>
-                <span className="timestamp font-mono">
-                  {formatTimeAgo(status.cvs.lastSuccess || status.cvs.lastAttempt)}
-                </span>
-                {status.cvs.lastSourceType && (
-                  <span className={`source-type-pill ${status.cvs.lastSourceType}`}>
-                    {formatSourceLabel(status.cvs.lastSourceType)}
-                  </span>
-                )}
-              </div>
-
-              <div
-                className="health-pill"
-                title={`Costco: ${status.costco.status === "success" ? "Online" : status.costco.status} (${status.costco.itemCount} items)`}
-              >
-                <span className="pulsing-dot-wrap">
-                  <span className={`pulsing-dot ${getHealthDotClass(status.costco.status)}`} />
-                </span>
-                <span>Costco:</span>
-                <strong>{status.costco.status === "success" ? "Online" : "Protected"}</strong>
-                <span style={{ opacity: 0.6 }}>•</span>
-                <span className="timestamp font-mono">
-                  {formatTimeAgo(status.costco.lastSuccess || status.costco.lastAttempt)}
-                </span>
-                {status.costco.lastSourceType && (
-                  <span className={`source-type-pill ${status.costco.lastSourceType}`}>
-                    {formatSourceLabel(status.costco.lastSourceType)}
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+    <header className="minimal-app-header">
+      <div className="minimal-header-inner">
+        {/* Left: Compact Brand Title */}
+        <div className="minimal-brand-group">
+          <div className="minimal-brand-logo">
+            <ShieldCheck size={18} strokeWidth={2.4} />
+          </div>
+          <h1 className="minimal-brand-title">FSA Tracker</h1>
         </div>
 
-        {/* Action Controls: Desktop Inline or Mobile Responsive with Overflow Menu */}
-        <div className="header-actions">
-          {/* Primary Action: Sync Now */}
+        {/* Center: Desktop-only Primary Navigation */}
+        {!isMobile && (
+          <nav className="minimal-desktop-nav" aria-label="Main Navigation">
+            <button
+              type="button"
+              className={`minimal-nav-tab ${activeMode === "deals" ? "active" : ""}`}
+              onClick={() => onNavigate("deals")}
+            >
+              Deals
+            </button>
+            <button
+              type="button"
+              className={`minimal-nav-tab ${activeMode === "discover" ? "active" : ""}`}
+              onClick={() => onNavigate("discover")}
+            >
+              Discover
+            </button>
+            <button
+              type="button"
+              className={`minimal-nav-tab ${activeMode === "saved" ? "active" : ""}`}
+              onClick={() => onNavigate("saved")}
+            >
+              <span>Saved</span>
+              {savedCount > 0 && (
+                <span className="minimal-nav-badge font-mono">{savedCount}</span>
+              )}
+            </button>
+          </nav>
+        )}
+
+        {/* Right: Minimal Action Icons & Small Status Indicator */}
+        <div className="minimal-header-actions">
+          {/* Small Expandable Sync-Status Indicator */}
           <button
             type="button"
-            className="btn btn-primary"
-            onClick={onRefreshAll}
-            disabled={isRefreshing}
-            title="Trigger on-demand retailer discovery"
+            className={`minimal-status-chip ${isRateLimited ? "amber" : "green"} ${showDiagnostics ? "expanded" : ""}`}
+            onClick={() => setShowDiagnostics((prev) => !prev)}
+            title="Click to view sync diagnostics"
+            aria-label="Retailer sync status"
+            aria-expanded={showDiagnostics}
           >
-            <RefreshCw size={14} className={isRefreshing ? "spin-icon" : ""} />
-            <span>{isRefreshing ? "Syncing..." : isMobile ? "Sync" : "Sync Now"}</span>
+            <span className={`status-indicator-dot ${isRateLimited ? "amber" : "green"}`} />
+            <span className="minimal-status-label font-sans">
+              {isRateLimited
+                ? isMobile
+                  ? "Cached"
+                  : "Snapshots active"
+                : isMobile
+                ? "Live"
+                : "Synced"}
+            </span>
+            {showDiagnostics ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
           </button>
 
-          {/* Desktop-only secondary buttons */}
-          {!isMobile && (
-            <>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={onOpenImportModal}
-                title="Manage watchlist or import custom deals"
-              >
-                <PlusCircle size={14} />
-                <span>Watchlist / Import</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn btn-ghost"
-                onClick={onExportCsv}
-                title="Export currently filtered grid data as CSV"
-              >
-                <Download size={14} />
-                <span>Export CSV</span>
-              </button>
-            </>
-          )}
-
-          {/* Theme Toggle Button (Light/Dark) */}
+          {/* Sync Button */}
           <button
             type="button"
-            className="btn btn-icon-only"
+            className="minimal-icon-btn"
+            onClick={onRefreshAll}
+            disabled={isRefreshing}
+            title={isRefreshing ? "Syncing..." : "Sync latest prices"}
+            aria-label="Sync latest prices"
+          >
+            <RefreshCw size={15} className={isRefreshing ? "spin-icon" : ""} />
+          </button>
+
+          {/* Theme Toggle */}
+          <button
+            type="button"
+            className="minimal-icon-btn"
             onClick={onToggleTheme}
             title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             aria-label={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
-            {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+            {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
           </button>
-
-          {/* Mobile Overflow Menu Toggle */}
-          {isMobile && (
-            <div className="overflow-menu-wrapper" ref={overflowMenuRef}>
-              <button
-                type="button"
-                className={`btn btn-icon-only ${isOverflowOpen ? "active" : ""}`}
-                onClick={() => setIsOverflowOpen((prev) => !prev)}
-                title="Open secondary menu"
-                aria-label="Open secondary navigation menu"
-                aria-expanded={isOverflowOpen}
-              >
-                <MoreVertical size={16} />
-              </button>
-
-              {/* Mobile Overflow Popover Menu */}
-              {isOverflowOpen && (
-                <div className="overflow-popover-menu" role="menu">
-                  <button
-                    type="button"
-                    className="overflow-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setIsOverflowOpen(false);
-                      onOpenImportModal();
-                    }}
-                  >
-                    <PlusCircle size={15} />
-                    <span>Watchlist / Import Deals</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="overflow-menu-item"
-                    role="menuitem"
-                    onClick={() => {
-                      setIsOverflowOpen(false);
-                      onExportCsv();
-                    }}
-                  >
-                    <Download size={15} />
-                    <span>Export CSV</span>
-                  </button>
-
-                  <div className="overflow-menu-divider" />
-
-                  <div className="overflow-menu-status-section">
-                    <div className="overflow-status-label">
-                      <Layers size={13} />
-                      <span>Retailer Status</span>
-                    </div>
-                    <div className="overflow-status-row">
-                      <span>CVS:</span>
-                      <strong>{status.cvs.status === "success" ? "Online" : "Protected"}</strong>
-                      <span className="font-mono text-xs">{formatTimeAgo(status.cvs.lastSuccess)}</span>
-                    </div>
-                    <div className="overflow-status-row">
-                      <span>Costco:</span>
-                      <strong>{status.costco.status === "success" ? "Online" : "Protected"}</strong>
-                      <span className="font-mono text-xs">{formatTimeAgo(status.costco.lastSuccess)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Retailer Bot Guard Notice Single-Line Status Bar & Expandable Diagnostics */}
-      {anyBotGuardIssue && (
-        <div className="bot-guard-wrapper">
-          <div className="bot-guard-bar">
-            <div className="bot-guard-main">
-              <AlertTriangle size={16} className="bot-guard-icon" />
-              <div className="bot-guard-text">
-                <strong>Retailer Bot Guard Notice:</strong>
-                <span>Live cloud sync was rate-limited or blocked. Prior verified price snapshots remain active.</span>
-              </div>
-            </div>
-
-            <div className="bot-guard-actions">
-              <button
-                type="button"
-                className="btn-bookmarklet"
-                onClick={onOpenImportModal}
-                title="Open 1-Click Bookmarklet to sync fresh deals directly from your browser"
-              >
-                <BookmarkCheck size={13} />
-                <span>1-Click Bookmarklet Sync</span>
-              </button>
-
-              <button
-                type="button"
-                className="btn-diagnostics-toggle"
-                onClick={() => setShowDiagnostics((prev) => !prev)}
-                title={showDiagnostics ? "Hide diagnostic details" : "View diagnostic error logs"}
-              >
-                <span>View Diagnostics ({diagnostics.length})</span>
-                {showDiagnostics ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-              </button>
-            </div>
+      {/* Expandable Diagnostic Drawer */}
+      {showDiagnostics && (
+        <div className="minimal-diagnostics-popover" ref={diagnosticsRef}>
+          <div className="minimal-diag-header">
+            <span style={{ fontWeight: 700, fontSize: "0.8rem" }}>Retailer Sync Status</span>
+            <span className="font-mono" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+              Updated {formatTimeAgo(status.updatedAt)}
+            </span>
           </div>
 
-          {/* Clean, properly padded expandable list with zero overlap */}
-          {showDiagnostics && (
-            <div className="diagnostics-drawer">
-              <div className="diagnostics-header">
-                <span>Active Connection Diagnostics</span>
-                <span className="font-mono" style={{ fontSize: "0.7rem", opacity: 0.8 }}>
-                  {diagnostics.length} {diagnostics.length === 1 ? "issue" : "issues"} recorded
-                </span>
+          <div className="minimal-diag-retailer-row">
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span className={`status-indicator-dot ${status.cvs.status === "success" ? "green" : "amber"}`} />
+              <span style={{ fontWeight: 600 }}>CVS:</span>
+              <span style={{ color: "var(--text-muted)", fontSize: "0.775rem" }}>
+                {status.cvs.status === "success" ? "Online" : "Protected (Snapshot Retained)"}
+              </span>
+            </div>
+            <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
+              {formatTimeAgo(status.cvs.lastSuccess || status.cvs.lastAttempt)}
+            </span>
+          </div>
+
+          <div className="minimal-diag-retailer-row">
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span className={`status-indicator-dot ${status.costco.status === "success" ? "green" : "amber"}`} />
+              <span style={{ fontWeight: 600 }}>Costco:</span>
+              <span style={{ color: "var(--text-muted)", fontSize: "0.775rem" }}>
+                {status.costco.status === "success" ? "Online" : "Protected (Snapshot Retained)"}
+              </span>
+            </div>
+            <span className="font-mono text-xs" style={{ color: "var(--text-muted)" }}>
+              {formatTimeAgo(status.costco.lastSuccess || status.costco.lastAttempt)}
+            </span>
+          </div>
+
+          {diagnostics.length > 0 && (
+            <div style={{ marginTop: "0.5rem", borderTop: "1px solid var(--border-subtle)", paddingTop: "0.5rem" }}>
+              <div style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: "0.3rem" }}>
+                Rate-Limit / Bot Defense Logs:
               </div>
-              <ul className="diagnostics-list">
-                {diagnostics.map((err, idx) => {
-                  const isCvs = err.retailer === "CVS";
-                  return (
-                    <li
-                      key={`${err.retailer}-${err.url}-${idx}`}
-                      className="diagnostic-row"
-                    >
-                      <span className={`diagnostic-badge-retailer ${isCvs ? "cvs" : "costco"}`}>
-                        {err.retailer}
-                      </span>
-                      <span className="diagnostic-badge-status font-mono">
-                        {err.statusCode}
-                      </span>
-                      <div className="diagnostic-url-wrap">
-                        <a
-                          href={err.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="diagnostic-url"
-                          title={err.url}
-                        >
-                          {err.url}
-                        </a>
-                        <ExternalLink size={12} style={{ opacity: 0.6, flexShrink: 0 }} />
-                      </div>
-                      {err.message && (
-                        <span className="diagnostic-message font-mono">
-                          {err.message}
-                        </span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              {diagnostics.map((err, i) => (
+                <div key={i} className="font-mono" style={{ fontSize: "0.68rem", color: "var(--amber)", padding: "0.2rem 0" }}>
+                  [{err.retailer}] {err.statusCode}: Prior snapshot active
+                </div>
+              ))}
             </div>
           )}
         </div>
