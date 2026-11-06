@@ -1320,3 +1320,223 @@ body {
     width: 100vw;
   }
 }
+
+/* ===================================================================
+   RETAILER BOT GUARD NOTICE & EXPANDABLE DIAGNOSTICS
+   =================================================================== */
+.bot-guard-wrapper {
+  max-width: 1600px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0.4rem 1.25rem 0.5rem 1.25rem;
+}
+
+.bot-guard-bar {
+  background-color: var(--amber-light);
+  border: 1px solid var(--amber-border);
+  color: var(--amber);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.85rem;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-xs);
+}
+
+.bot-guard-main {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.bot-guard-icon {
+  flex-shrink: 0;
+  color: var(--amber);
+}
+
+.bot-guard-text {
+  color: var(--text-main);
+  line-height: 1.4;
+}
+
+.bot-guard-text strong {
+  font-weight: 600;
+  color: var(--amber);
+  margin-right: 0.35rem;
+}
+
+.bot-guard-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.btn-bookmarklet {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--amber-border);
+  color: var(--amber);
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all var(--trans-fast);
+}
+
+.btn-bookmarklet:hover {
+  background-color: var(--amber-light);
+  border-color: var(--amber);
+}
+
+.btn-diagnostics-toggle {
+  background-color: transparent;
+  border: 1px solid var(--amber-border);
+  color: var(--text-main);
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all var(--trans-fast);
+}
+
+.btn-diagnostics-toggle:hover {
+  background-color: var(--bg-surface);
+  border-color: var(--border-strong);
+}
+
+.diagnostics-drawer {
+  margin-top: 0.5rem;
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.diagnostics-header {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.diagnostics-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.diagnostic-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.45rem 0.65rem;
+  border-radius: var(--radius-sm);
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.775rem;
+  flex-wrap: wrap;
+}
+
+.diagnostic-badge-retailer {
+  font-weight: 700;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.diagnostic-badge-retailer.cvs {
+  background-color: var(--retailer-cvs-bg);
+  color: var(--retailer-cvs-text);
+  border: 1px solid var(--retailer-cvs-border);
+}
+
+.diagnostic-badge-retailer.costco {
+  background-color: var(--retailer-costco-bg);
+  color: var(--retailer-costco-text);
+  border: 1px solid var(--retailer-costco-border);
+}
+
+.diagnostic-badge-status {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-xs);
+  background-color: var(--rose-light);
+  color: var(--rose);
+  border: 1px solid var(--rose-border);
+  flex-shrink: 0;
+}
+
+.diagnostic-url-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
+.diagnostic-url {
+  font-family: var(--font-mono);
+  font-size: 0.725rem;
+  color: var(--primary);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 520px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.diagnostic-url:hover {
+  text-decoration: underline;
+  color: var(--primary-hover);
+}
+
+.diagnostic-message {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .bot-guard-bar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .bot-guard-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .diagnostic-message {
+    margin-left: 0;
+    width: 100%;
+  }
+}

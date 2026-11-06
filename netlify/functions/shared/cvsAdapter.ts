@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { ProductObservation, PromoType } from "../../../src/types/product";
-import { CollectionResult } from "./types";
+import { CollectionResult, FetchAdapterOptions, StructuredError } from "./types";
 
 export interface CvsRawPayload {
   sku?: string;
@@ -25,7 +25,7 @@ export function parseCvsHtml(html: string, pageUrl: string = "https://www.cvs.co
 
   // 1. Check for Akamai / WAF challenge
   const title = $("title").text().toLowerCase();
-  if (title.includes("access denied") || html.includes("akamai") && html.includes("reference #")) {
+  if (title.includes("access denied") || (html.includes("akamai") && html.includes("reference #"))) {
     throw new Error("WAF_BLOCKED: Akamai Bot Manager challenge detected");
   }
 
@@ -178,20 +178,31 @@ function inferCategory(name: string, explicitCategory?: string): string {
   return "OTC Meds";
 }
 
-export async function fetchCvsProducts(watchlistUrls: string[] = []): Promise<CollectionResult> {
+export async function fetchCvsProducts(
+  watchlistUrls: string[] = [],
+  options: FetchAdapterOptions = {}
+): Promise<CollectionResult> {
   const products: ProductObservation[] = [];
   const errors: string[] = [];
+  const structuredErrors: StructuredError[] = [];
   let blockedByWaf = false;
+  let rateLimited = false;
 
   // Filter watchlist URLs for CVS
   const cvsUrls = watchlistUrls.filter((u) => u.includes("cvs.com"));
 
   // If no custom URLs, use standard target URL
-  const urlsToFetch = cvsUrls.length > 0 ? cvsUrls : [
+  const allUrls = cvsUrls.length > 0 ? cvsUrls : [
     "https://www.cvs.com/shop/cvs-health-series-400-upper-arm-blood-pressure-monitor-prodid-108201"
   ];
 
-  for (const url of urlsToFetch) {
+  // Cap each scheduled or on-demand pass to a maximum batch of 3 URLs per run
+  const batchLimit = options.batchLimit ?? 3;
+  const urlsToFetch = allUrls.slice(0, batchLimit);
+
+  // Strict sequential queue
+  for (let i = 0; i < urlsToFetch.length; i++) {
+    const url = urlsToFetch[i];
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000); // 8-second timeout
@@ -206,14 +217,47 @@ export async function fetchCvsProducts(watchlistUrls: string[] = []): Promise<Co
       });
       clearTimeout(timeoutId);
 
-      if (res.status === 403 || res.status === 429) {
-        blockedByWaf = true;
-        errors.push(`HTTP ${res.status}: CVS Bot Manager/Akamai blocked request to ${url}`);
-        continue;
+      // CIRCUIT BREAKER: Immediately check for HTTP 429 and 403
+      if (res.status === 429 || res.status === 403) {
+        const retryHeader = res.headers.get("retry-after");
+        const retrySec = retryHeader ? parseInt(retryHeader, 10) : null;
+        const statusBadge = `HTTP ${res.status}`;
+        const reason = res.status === 429 ? "Too Many Requests (Rate Limited)" : "Akamai Bot Manager block";
+
+        if (res.status === 429) {
+          rateLimited = true;
+        } else {
+          blockedByWaf = true;
+        }
+
+        const retryText = retrySec && !Number.isNaN(retrySec) ? ` (Retry-After: ${retrySec}s)` : "";
+        const errorLine = `${statusBadge}: CVS Bot Manager/Akamai blocked request to ${url}${retryText}`;
+        errors.push(errorLine);
+
+        structuredErrors.push({
+          retailer: "CVS",
+          statusCode: statusBadge,
+          url,
+          message: `${reason}${retryText}`,
+          retryAfter: retrySec && !Number.isNaN(retrySec) ? retrySec : null,
+          timestamp: new Date().toISOString()
+        });
+
+        console.warn(`[CVS Collector] Circuit breaker tripped (${statusBadge}) for ${url}. Aborting remaining batch.`);
+        // IMMEDIATELY break out of the loop for this retailer for the remainder of invocation
+        break;
       }
 
       if (!res.ok) {
-        errors.push(`HTTP ${res.status} returned from ${url}`);
+        const errorLine = `HTTP ${res.status} returned from ${url}`;
+        errors.push(errorLine);
+        structuredErrors.push({
+          retailer: "CVS",
+          statusCode: `HTTP ${res.status}`,
+          url,
+          message: `Unexpected HTTP status ${res.status}`,
+          timestamp: new Date().toISOString()
+        });
         continue;
       }
 
@@ -221,18 +265,58 @@ export async function fetchCvsProducts(watchlistUrls: string[] = []): Promise<Co
       const parsed = parseCvsHtml(html, url);
       products.push(...parsed);
 
-      // Conservative polite rate limit (500ms pause)
-      await new Promise((r) => setTimeout(r, 500));
+      // Randomized jitter delay of 5,500ms to 7,000ms between requests
+      if (i < urlsToFetch.length - 1 && !options.skipDelayForTesting) {
+        const minDelay = options.minDelayMs ?? 5500;
+        const maxDelay = options.maxDelayMs ?? 7000;
+        const jitter = minDelay + Math.random() * (maxDelay - minDelay);
+        await new Promise((r) => setTimeout(r, jitter));
+      }
     } catch (err: any) {
       if (err.name === "AbortError") {
         errors.push(`Request to ${url} timed out after 8 seconds`);
+        structuredErrors.push({
+          retailer: "CVS",
+          statusCode: "TIMEOUT",
+          url,
+          message: "Request timed out after 8 seconds",
+          timestamp: new Date().toISOString()
+        });
       } else if (err.message && err.message.includes("WAF_BLOCKED")) {
         blockedByWaf = true;
-        errors.push(`WAF challenge encountered at ${url}`);
+        errors.push(`HTTP 403: Akamai Bot challenge encountered at ${url}`);
+        structuredErrors.push({
+          retailer: "CVS",
+          statusCode: "HTTP 403",
+          url,
+          message: "Akamai Bot challenge detected in HTML page content",
+          timestamp: new Date().toISOString()
+        });
+        // Circuit breaker: immediately stop hammering retailer
+        break;
       } else {
         errors.push(`Fetch failed for ${url}: ${err.message}`);
+        structuredErrors.push({
+          retailer: "CVS",
+          statusCode: "ERROR",
+          url,
+          message: err.message || "Network request failed",
+          timestamp: new Date().toISOString()
+        });
       }
     }
+  }
+
+  if (rateLimited) {
+    return {
+      retailer: "CVS",
+      products,
+      success: false,
+      status: "rate_limited",
+      errorMessage: errors.join("; "),
+      diagnosticDetails: "CVS returned HTTP 429 rate limit. Circuit breaker halted collector. Existing snapshot retained.",
+      structuredErrors
+    };
   }
 
   if (blockedByWaf) {
@@ -242,7 +326,8 @@ export async function fetchCvsProducts(watchlistUrls: string[] = []): Promise<Co
       success: false,
       status: "blocked_waf",
       errorMessage: errors.join("; "),
-      diagnosticDetails: "Akamai Bot Manager blocked datacenter IP. Existing snapshot retained."
+      diagnosticDetails: "Akamai Bot Manager blocked datacenter IP. Circuit breaker halted collector. Existing snapshot retained.",
+      structuredErrors
     };
   }
 
@@ -252,7 +337,9 @@ export async function fetchCvsProducts(watchlistUrls: string[] = []): Promise<Co
       products,
       success: false,
       status: "error",
-      errorMessage: errors.join("; ")
+      errorMessage: errors.join("; "),
+      diagnosticDetails: "No products could be extracted.",
+      structuredErrors
     };
   }
 
@@ -261,6 +348,7 @@ export async function fetchCvsProducts(watchlistUrls: string[] = []): Promise<Co
     products,
     success: true,
     status: "success",
-    errorMessage: null
+    errorMessage: null,
+    structuredErrors: []
   };
 }

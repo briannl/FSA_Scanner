@@ -53,6 +53,15 @@ export interface ProductPriceHistory {
   history: PricePoint[];
 }
 
+export interface StructuredError {
+  retailer: Retailer;
+  statusCode: number | string;
+  url: string;
+  message: string;
+  retryAfter?: number | null;
+  timestamp?: string;
+}
+
 export interface RetailerStatus {
   lastAttempt: string | null;
   lastSuccess: string | null;
@@ -60,6 +69,7 @@ export interface RetailerStatus {
   itemCount: number;
   errorMessage: string | null;
   diagnosticDetails?: string | null;
+  structuredErrors?: StructuredError[];
 }
 
 export interface TrackerStatus {
