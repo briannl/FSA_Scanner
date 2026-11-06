@@ -1,5 +1,5 @@
 import * as cheerio from "cheerio";
-import { ProductObservation, PromoType, PriceStatus } from "../../../src/types/product";
+import { ProductObservation, PromoType } from "../../../src/types/product";
 import { CollectionResult } from "./types";
 
 export interface CvsRawPayload {

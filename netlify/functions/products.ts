@@ -1,7 +1,7 @@
 import type { Context } from "@netlify/functions";
 import { getAllProductsData } from "./shared/collector";
 
-export default async (req: Request, _context: Context): Promise<Response> => {
+export default async (_req: Request, _context: Context): Promise<Response> => {
   try {
     const data = await getAllProductsData();
     return new Response(JSON.stringify(data), {

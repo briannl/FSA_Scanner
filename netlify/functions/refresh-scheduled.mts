@@ -1,7 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { runCollection } from "./shared/collector";
 
-export default async (req: Request) => {
+export default async (_req: Request) => {
   console.log("[CRON] Scheduled FSA Deal Tracker collection started at", new Date().toISOString());
   try {
     const status = await runCollection({ retailer: "all" });
