@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Production build
+dist
+dist-ssr
+*.local
+
+# Netlify
+.netlify
+netlify/functions/*.js
+netlify/functions/*.js.map
+
+# Local persistence & cache fallback
+.data
+.cache
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Playwright & Browser MCP artifacts
+.playwright-mcp
+
+# Logs & temp
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Editor & OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
