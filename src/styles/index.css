@@ -4620,6 +4620,136 @@ body {
   margin-bottom: 1.25rem;
 }
 
+/* Drug Facts & Active Ingredients */
+.scan-result-drug-facts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background-color: rgba(197, 185, 255, 0.06);
+  border: 1px solid rgba(197, 185, 255, 0.15);
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+  margin-bottom: 0.85rem;
+}
+
+[data-theme="light"] .scan-result-drug-facts {
+  background-color: #f1f0fb;
+  border-color: #ddd6fe;
+}
+
+.drug-fact-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.8rem;
+}
+
+.drug-fact-label {
+  color: var(--editorial-text-muted);
+  font-weight: 600;
+}
+
+.drug-fact-value {
+  color: var(--editorial-lavender);
+  font-weight: 700;
+}
+
+[data-theme="light"] .drug-fact-value {
+  color: #6d28d9;
+}
+
+.doc-box-evidence-link {
+  font-size: 0.75rem;
+  color: var(--editorial-lavender);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.35rem;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.doc-box-evidence-link:hover {
+  text-decoration: underline;
+}
+
+/* User Flagging & Community Evidence */
+.scan-flag-section {
+  margin-bottom: 1rem;
+}
+
+.scan-flag-btn {
+  background: none;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  color: var(--editorial-text-muted);
+  font-size: 0.775rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  padding: 0.55rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.scan-flag-btn:hover {
+  background-color: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.scan-flag-btn.flagged {
+  border-color: var(--editorial-lime);
+  color: var(--editorial-lime);
+  background-color: rgba(212, 244, 155, 0.08);
+}
+
+.scan-flag-form {
+  background-color: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 0.75rem;
+}
+
+.scan-flag-title {
+  font-size: 0.75rem;
+  color: var(--editorial-text-muted);
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+}
+
+.scan-flag-textarea {
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 0.5rem;
+  color: #ffffff;
+  font-size: 0.775rem;
+  resize: vertical;
+  outline: none;
+}
+
+.scan-flag-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.scan-flag-cancel-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--editorial-text-muted);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
 .matching-deal-btn {
   background-color: var(--editorial-lime);
   color: #111318;

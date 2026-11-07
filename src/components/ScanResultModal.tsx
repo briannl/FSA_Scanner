@@ -13,7 +13,8 @@ import {
   Tag,
   DollarSign,
   Building,
-  Info
+  Info,
+  Flag
 } from "lucide-react";
 import { ScannedProduct, InStoreEligibilityStatus } from "../types/scanner";
 import { ScanHistoryService } from "../services/ScanHistoryService";
@@ -42,6 +43,10 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
     product?.price != null ? product.price.toString() : ""
   );
   const [isSavedNotice, setIsSavedNotice] = useState(false);
+  const [showFlagInput, setShowFlagInput] = useState(false);
+  const [flagNote, setFlagNote] = useState(product?.userEvidenceNote || "");
+  const [isFlagged, setIsFlagged] = useState(Boolean(product?.flaggedIncorrect));
+  const [flagNotice, setFlagNotice] = useState(false);
 
   if (!isOpen || !product) return null;
 
@@ -60,6 +65,14 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
     });
     setIsSavedNotice(true);
     setTimeout(() => setIsSavedNotice(false), 1500);
+  };
+
+  const handleSubmitFlag = () => {
+    ScanHistoryService.flagResult(product.id, flagNote.trim());
+    setIsFlagged(true);
+    setShowFlagInput(false);
+    setFlagNotice(true);
+    setTimeout(() => setFlagNotice(false), 2500);
   };
 
   // Status Badge Configuration
@@ -129,7 +142,9 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
           <div className="result-banner-icon">{statusConfig.icon}</div>
           <div className="result-banner-text">
             <span className="result-banner-title">{statusConfig.title}</span>
-            <span className="result-banner-category">{product.category}</span>
+            <span className="result-banner-category">
+              {product.medicalCategory ? `${product.medicalCategory} • ${product.category}` : product.category}
+            </span>
           </div>
         </div>
 
@@ -151,6 +166,24 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
           </div>
         </div>
 
+        {/* 2b. Medicated Drug Facts / Active Ingredient Box */}
+        {(product.activeIngredient || product.purpose) && (
+          <div className="scan-result-drug-facts">
+            {product.activeIngredient && (
+              <div className="drug-fact-item">
+                <span className="drug-fact-label">Active Ingredient:</span>
+                <span className="drug-fact-value">{product.activeIngredient}</span>
+              </div>
+            )}
+            {product.purpose && (
+              <div className="drug-fact-item">
+                <span className="drug-fact-label">Purpose:</span>
+                <span className="drug-fact-value">{product.purpose}</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* 3. Short Clear Explanation */}
         <div className="scan-result-explanation-box">
           <p className="scan-explanation-text">{product.explanation}</p>
@@ -160,6 +193,16 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
         <div className="scan-result-doc-box">
           <span className="doc-box-label">Documentation Required:</span>
           <span className="doc-box-value">{product.documentationRequired}</span>
+          {product.evidenceUrl && (
+            <a
+              href={product.evidenceUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="doc-box-evidence-link"
+            >
+              Verified FSAFEDS / FSA Store Reference <ExternalLink size={12} />
+            </a>
+          )}
         </div>
 
         {/* 5. Matching Deal Link (if available in Deals feed) */}
@@ -257,7 +300,53 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
           </div>
         </div>
 
-        {/* 8. Technical Details & Evidence (Expandable Accordion) */}
+        {/* 8. Flag Result & Community Evidence Section */}
+        <div className="scan-flag-section">
+          {!showFlagInput ? (
+            <button
+              type="button"
+              className={`scan-flag-btn ${isFlagged ? "flagged" : ""}`}
+              onClick={() => setShowFlagInput(true)}
+            >
+              <Flag size={14} />
+              <span>{isFlagged ? "Result Flagged (Review Pending)" : "Flag Incorrect Result or Provide Evidence"}</span>
+            </button>
+          ) : (
+            <div className="scan-flag-form">
+              <span className="scan-flag-title">Report eligibility discrepancy or supporting evidence:</span>
+              <textarea
+                rows={2}
+                placeholder="e.g. FSA Store link, receipt detail, or formulation facts..."
+                value={flagNote}
+                onChange={(e) => setFlagNote(e.target.value)}
+                className="scan-flag-textarea"
+              />
+              <div className="scan-flag-actions">
+                <button
+                  type="button"
+                  className="editorial-primary-btn text-xs py-1.5 px-3"
+                  onClick={handleSubmitFlag}
+                >
+                  Submit Evidence
+                </button>
+                <button
+                  type="button"
+                  className="scan-flag-cancel-btn"
+                  onClick={() => setShowFlagInput(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+          {flagNotice && (
+            <div className="text-center text-xs text-lime font-medium py-1">
+              ✓ Evidence submitted. Result flagged for review.
+            </div>
+          )}
+        </div>
+
+        {/* 9. Technical Details & Evidence (Expandable Accordion) */}
         <div className="scan-evidence-accordion">
           <button
             type="button"
@@ -270,10 +359,41 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
 
           {showEvidence && (
             <div className="scan-evidence-content">
+              {product.medicalCategory && (
+                <div className="evidence-row">
+                  <span className="evidence-term">Medical Subcategory:</span>
+                  <span className="evidence-val font-semibold text-lavender">{product.medicalCategory}</span>
+                </div>
+              )}
+              {product.activeIngredient && (
+                <div className="evidence-row">
+                  <span className="evidence-term">Active Ingredient:</span>
+                  <span className="evidence-val font-semibold text-white">{product.activeIngredient}</span>
+                </div>
+              )}
+              {product.purpose && (
+                <div className="evidence-row">
+                  <span className="evidence-term">Medical Purpose:</span>
+                  <span className="evidence-val text-white">{product.purpose}</span>
+                </div>
+              )}
               <div className="evidence-row">
                 <span className="evidence-term">Regulatory Authority:</span>
                 <span className="evidence-val">{product.evidenceSource}</span>
               </div>
+              {product.evidenceUrl && (
+                <div className="evidence-row">
+                  <span className="evidence-term">Official Source Reference:</span>
+                  <a
+                    href={product.evidenceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="evidence-val text-lavender hover:underline flex items-center gap-1 justify-end"
+                  >
+                    View Official Reference <ExternalLink size={12} />
+                  </a>
+                </div>
+              )}
               {product.evidenceNote && (
                 <div className="evidence-row">
                   <span className="evidence-term">Evidence Note:</span>

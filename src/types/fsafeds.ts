@@ -25,6 +25,8 @@ export type EligibilityAccountType = "HCFSA" | "HSA" | "FSA" | "LEX HCFSA";
 export type DocumentationRequirement =
   | "None (OTC Item per CARES Act)"
   | "Receipt Only"
+  | "Detailed Receipt"
+  | "Detailed receipt"
   | "Prescription Required"
   | "Letter of Medical Necessity (LMN)";
 

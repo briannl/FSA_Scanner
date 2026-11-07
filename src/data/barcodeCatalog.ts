@@ -6,11 +6,15 @@ export interface CuratedBarcodeEntry {
   name: string;
   brand: string;
   category: FsafedsCategory;
+  medicalCategory?: string;
   eligibilityStatus: InStoreEligibilityStatus;
   explanation: string;
-  documentationRequired: DocumentationRequirement;
+  documentationRequired: DocumentationRequirement | string;
+  activeIngredient?: string;
+  purpose?: string;
   evidenceSource: string;
   evidenceNote?: string;
+  evidenceUrl?: string;
   imageUrl?: string;
   verifiedAt: string;
   matchingProductId?: string;
@@ -225,6 +229,146 @@ export const CURATED_BARCODE_DATABASE: Record<string, CuratedBarcodeEntry> = {
   },
 
   // ==========================================
+  // 5b. Medicated OTC Acne Treatments (CARES Act Sec. 3702 / FSAFEDS)
+  // ==========================================
+  "3606000577138": {
+    barcode: "3606000577138",
+    name: "CeraVe Acne Control Cleanser with 2% Salicylic Acid, 8 oz",
+    brand: "CeraVe",
+    category: "Skin & Sun Care",
+    medicalCategory: "OTC Acne Treatments",
+    eligibilityStatus: "Verified eligible",
+    explanation: "Medicated acne treatment cleanser with 2% Salicylic Acid. Eligible under FSAFEDS and CARES Act Section 3702.",
+    documentationRequired: "Detailed receipt",
+    activeIngredient: "2% Salicylic Acid",
+    purpose: "Acne treatment",
+    evidenceSource: "FSA Store / FSAFEDS",
+    evidenceNote: "FSA Store verified eligible item #32415. FSAFEDS eligible OTC acne treatment with detailed receipt.",
+    evidenceUrl: "https://fsastore.com/cerave-acne-control-cleanser-8-oz./32415.html",
+    imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80",
+    verifiedAt: "2026-11-06"
+  },
+  "03606000577138": {
+    barcode: "03606000577138",
+    name: "CeraVe Acne Control Cleanser with 2% Salicylic Acid, 8 oz",
+    brand: "CeraVe",
+    category: "Skin & Sun Care",
+    medicalCategory: "OTC Acne Treatments",
+    eligibilityStatus: "Verified eligible",
+    explanation: "Medicated acne treatment cleanser with 2% Salicylic Acid. Eligible under FSAFEDS and CARES Act Section 3702.",
+    documentationRequired: "Detailed receipt",
+    activeIngredient: "2% Salicylic Acid",
+    purpose: "Acne treatment",
+    evidenceSource: "FSA Store / FSAFEDS",
+    evidenceNote: "FSA Store verified eligible item #32415 (GTIN-14). FSAFEDS eligible OTC acne treatment with detailed receipt.",
+    evidenceUrl: "https://fsastore.com/cerave-acne-control-cleanser-8-oz./32415.html",
+    imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80",
+    verifiedAt: "2026-11-06"
+  },
+  "3606000608405": {
+    barcode: "3606000608405",
+    name: "CeraVe Acne Control Cleanser with 2% Salicylic Acid, 16 oz",
+    brand: "CeraVe",
+    category: "Skin & Sun Care",
+    medicalCategory: "OTC Acne Treatments",
+    eligibilityStatus: "Verified eligible",
+    explanation: "Medicated acne treatment cleanser with 2% Salicylic Acid. Eligible under FSAFEDS and CARES Act Section 3702.",
+    documentationRequired: "Detailed receipt",
+    activeIngredient: "2% Salicylic Acid",
+    purpose: "Acne treatment",
+    evidenceSource: "FSA Store / FSAFEDS",
+    evidenceNote: "FSA Store verified eligible item #40551. FSAFEDS eligible OTC acne treatment with detailed receipt.",
+    evidenceUrl: "https://fsastore.com/cerave-acne-control-cleanser-16-oz./40551.html",
+    imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80",
+    verifiedAt: "2026-11-06"
+  },
+  "03606000608405": {
+    barcode: "03606000608405",
+    name: "CeraVe Acne Control Cleanser with 2% Salicylic Acid, 16 oz",
+    brand: "CeraVe",
+    category: "Skin & Sun Care",
+    medicalCategory: "OTC Acne Treatments",
+    eligibilityStatus: "Verified eligible",
+    explanation: "Medicated acne treatment cleanser with 2% Salicylic Acid. Eligible under FSAFEDS and CARES Act Section 3702.",
+    documentationRequired: "Detailed receipt",
+    activeIngredient: "2% Salicylic Acid",
+    purpose: "Acne treatment",
+    evidenceSource: "FSA Store / FSAFEDS",
+    evidenceNote: "FSA Store verified eligible item #40551 (GTIN-14). FSAFEDS eligible OTC acne treatment with detailed receipt.",
+    evidenceUrl: "https://fsastore.com/cerave-acne-control-cleanser-16-oz./40551.html",
+    imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80",
+    verifiedAt: "2026-11-06"
+  },
+  "018754500173": {
+    barcode: "018754500173",
+    name: "PanOxyl 10% Benzoyl Peroxide Acne Foaming Wash, 5.5 oz",
+    brand: "PanOxyl",
+    category: "Skin & Sun Care",
+    medicalCategory: "OTC Acne Treatments",
+    eligibilityStatus: "Verified eligible",
+    explanation: "Maximum strength antimicrobial acne foaming wash with 10% Benzoyl Peroxide. Eligible under CARES Act Section 3702.",
+    documentationRequired: "Detailed receipt",
+    activeIngredient: "10% Benzoyl Peroxide",
+    purpose: "Acne treatment",
+    evidenceSource: "FSAFEDS / CARES Act Sec. 3702",
+    evidenceNote: "Medicated OTC acne foaming wash with 10% benzoyl peroxide.",
+    evidenceUrl: "https://www.fsafeds.gov/explore/hcfsa/expenses?q=acne",
+    imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80",
+    verifiedAt: "2026-11-06"
+  },
+  "00187545001734": {
+    barcode: "00187545001734",
+    name: "PanOxyl 10% Benzoyl Peroxide Acne Foaming Wash, 5.5 oz",
+    brand: "PanOxyl",
+    category: "Skin & Sun Care",
+    medicalCategory: "OTC Acne Treatments",
+    eligibilityStatus: "Verified eligible",
+    explanation: "Maximum strength antimicrobial acne foaming wash with 10% Benzoyl Peroxide. Eligible under CARES Act Section 3702.",
+    documentationRequired: "Detailed receipt",
+    activeIngredient: "10% Benzoyl Peroxide",
+    purpose: "Acne treatment",
+    evidenceSource: "FSAFEDS / CARES Act Sec. 3702",
+    evidenceNote: "Medicated OTC acne foaming wash with 10% benzoyl peroxide.",
+    evidenceUrl: "https://www.fsafeds.gov/explore/hcfsa/expenses?q=acne",
+    imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80",
+    verifiedAt: "2026-11-06"
+  },
+  "302994111006": {
+    barcode: "302994111006",
+    name: "Differin Adapalene Gel 0.1% Acne Treatment, 15 g",
+    brand: "Differin",
+    category: "Skin & Sun Care",
+    medicalCategory: "OTC Acne Treatments",
+    eligibilityStatus: "Verified eligible",
+    explanation: "Prescription-strength retinoid acne treatment (0.1% Adapalene) permanently eligible OTC under CARES Act Section 3702.",
+    documentationRequired: "Detailed receipt",
+    activeIngredient: "0.1% Adapalene",
+    purpose: "Acne treatment",
+    evidenceSource: "FSAFEDS / CARES Act Sec. 3702",
+    evidenceNote: "FDA-approved OTC topical retinoid for acne treatment.",
+    evidenceUrl: "https://www.fsafeds.gov/explore/hcfsa/expenses?q=acne",
+    imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80",
+    verifiedAt: "2026-11-06"
+  },
+  "070501018002": {
+    barcode: "070501018002",
+    name: "Neutrogena Oil-Free Acne Wash with 2% Salicylic Acid, 9.1 fl oz",
+    brand: "Neutrogena",
+    category: "Skin & Sun Care",
+    medicalCategory: "OTC Acne Treatments",
+    eligibilityStatus: "Verified eligible",
+    explanation: "Medicated acne facial cleanser with 2% Salicylic Acid. Eligible under CARES Act Section 3702 with detailed receipt.",
+    documentationRequired: "Detailed receipt",
+    activeIngredient: "2% Salicylic Acid",
+    purpose: "Acne treatment",
+    evidenceSource: "FSAFEDS / CARES Act Sec. 3702",
+    evidenceNote: "Salicylic acid acne treatment cleanser.",
+    evidenceUrl: "https://www.fsafeds.gov/explore/hcfsa/expenses?q=acne",
+    imageUrl: "https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&q=80",
+    verifiedAt: "2026-11-06"
+  },
+
+  // ==========================================
   // 6. Menstrual & Reproductive Care
   // ==========================================
   "037000780287": {
@@ -335,6 +479,32 @@ export const CURATED_BARCODE_DATABASE: Record<string, CuratedBarcodeEntry> = {
     documentationRequired: "Receipt Only",
     evidenceSource: "IRS Section 213(d)",
     evidenceNote: "General hygiene hair care excluded from FSA debit card.",
+    verifiedAt: "2026-11-06"
+  },
+  "3606000537446": {
+    barcode: "3606000537446",
+    name: "CeraVe Hydrating Facial Cleanser for Normal to Dry Skin, 16 oz",
+    brand: "CeraVe",
+    category: "Skin & Sun Care",
+    medicalCategory: "Cosmetic Skincare",
+    eligibilityStatus: "Not eligible",
+    explanation: "Non-medicated cosmetic facial cleanser. Does not contain active OTC medicinal ingredients (such as Salicylic Acid or Benzoyl Peroxide) to treat a medical skin condition. General grooming and cosmetic face washes are excluded under IRS Section 213(d).",
+    documentationRequired: "Receipt Only",
+    evidenceSource: "IRS Section 213(d) / 26 CFR 1.213-1",
+    evidenceNote: "Cosmetic daily skin cleanser without active drug ingredients.",
+    verifiedAt: "2026-11-06"
+  },
+  "03606000537446": {
+    barcode: "03606000537446",
+    name: "CeraVe Hydrating Facial Cleanser for Normal to Dry Skin, 16 oz",
+    brand: "CeraVe",
+    category: "Skin & Sun Care",
+    medicalCategory: "Cosmetic Skincare",
+    eligibilityStatus: "Not eligible",
+    explanation: "Non-medicated cosmetic facial cleanser. Does not contain active OTC medicinal ingredients (such as Salicylic Acid or Benzoyl Peroxide) to treat a medical skin condition. General grooming and cosmetic face washes are excluded under IRS Section 213(d).",
+    documentationRequired: "Receipt Only",
+    evidenceSource: "IRS Section 213(d) / 26 CFR 1.213-1",
+    evidenceNote: "Cosmetic daily skin cleanser without active drug ingredients (GTIN-14).",
     verifiedAt: "2026-11-06"
   }
 };

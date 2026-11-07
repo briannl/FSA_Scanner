@@ -138,6 +138,16 @@ class ScanHistoryServiceImpl {
   }
 
   /**
+   * Flags a scan result as incorrect or attaches user-submitted evidence
+   */
+  flagResult(id: string, note?: string): void {
+    this.updateItem(id, {
+      flaggedIncorrect: true,
+      userEvidenceNote: note || "Flagged by user for FSA eligibility review."
+    });
+  }
+
+  /**
    * Exports scanned items to JSON format
    */
   exportJson(): void {

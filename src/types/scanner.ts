@@ -23,12 +23,16 @@ export interface ScannedProduct {
   name: string;
   brand?: string;
   category: FsafedsCategory;
+  medicalCategory?: string;
+  activeIngredient?: string;
+  purpose?: string;
   imageUrl?: string | null;
   eligibilityStatus: InStoreEligibilityStatus;
   explanation: string;
   documentationRequired: DocumentationRequirement | string;
   evidenceSource: string;
   evidenceNote?: string;
+  evidenceUrl?: string;
   verifiedAt: string;
   scannedAt: string;
   storeName?: string;
@@ -36,6 +40,8 @@ export interface ScannedProduct {
   matchingDeal?: MatchingDealInfo | null;
   userAddedLabelPhoto?: string | null;
   userEdited?: boolean;
+  flaggedIncorrect?: boolean;
+  userEvidenceNote?: string;
 }
 
 export interface ScanHistoryItem extends ScannedProduct {

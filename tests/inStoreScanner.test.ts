@@ -3,7 +3,8 @@ import {
   normalizeBarcode,
   isValidBarcodeString,
   detectBarcodeFormat,
-  verifyModulo10CheckDigit
+  verifyModulo10CheckDigit,
+  getBarcodeVariants
 } from "../src/utils/barcodeUtils";
 import {
   determineFsaEligibility,
@@ -38,12 +39,22 @@ describe("Barcode Normalization & Format Utilities", () => {
   });
 
   it("computes and verifies standard modulo-10 check digits", () => {
-    // Valid UPC-A: 036000291452
-    // 0 + 6 + 0 + 2 + 1 + 5 = 14 * 3 = 42
-    // 3 + 0 + 0 + 9 + 4 = 16
-    // 42 + 16 = 58; 60 - 58 = 2
     expect(verifyModulo10CheckDigit("036000291452")).toBe(true);
     expect(verifyModulo10CheckDigit("036000291459")).toBe(false);
+  });
+
+  it("generates cross-format barcode variants for seamless UPC/EAN/GTIN matching", () => {
+    const eanVariants = getBarcodeVariants("3606000577138");
+    expect(eanVariants).toContain("3606000577138");
+    expect(eanVariants).toContain("03606000577138");
+
+    const gtinVariants = getBarcodeVariants("03606000577138");
+    expect(gtinVariants).toContain("03606000577138");
+    expect(gtinVariants).toContain("3606000577138");
+
+    const upcVariants = getBarcodeVariants("050428456123");
+    expect(upcVariants).toContain("050428456123");
+    expect(upcVariants).toContain("0050428456123");
   });
 });
 
@@ -161,6 +172,132 @@ describe("FSA Eligibility Rules Engine for In-Store Scanning", () => {
   });
 });
 
+describe("FSA Eligibility — Verified False Negative & OTC Acne Suite", () => {
+  it("resolves CeraVe Acne Control Cleanser 8 oz (EAN-13: 3606000577138) as Verified eligible", () => {
+    const result = determineFsaEligibility({
+      barcode: "3606000577138",
+      name: "CeraVe Acne Control Cleanser with 2% Salicylic Acid, 8 oz"
+    });
+
+    expect(result.status).toBe("Verified eligible");
+    expect(result.category).toBe("Skin & Sun Care");
+    expect(result.medicalCategory).toBe("OTC Acne Treatments");
+    expect(result.documentationRequired).toBe("Detailed receipt");
+    expect(result.activeIngredient).toBe("2% Salicylic Acid");
+    expect(result.purpose).toBe("Acne treatment");
+    expect(result.evidenceUrl).toBe("https://fsastore.com/cerave-acne-control-cleanser-8-oz./32415.html");
+  });
+
+  it("resolves CeraVe Acne Control Cleanser 8 oz via GTIN-14 padded barcode (03606000577138)", () => {
+    const result = determineFsaEligibility({
+      barcode: "03606000577138"
+    });
+
+    expect(result.status).toBe("Verified eligible");
+    expect(result.medicalCategory).toBe("OTC Acne Treatments");
+    expect(result.documentationRequired).toBe("Detailed receipt");
+  });
+
+  it("resolves CeraVe Acne Control Cleanser 16 oz (EAN-13: 3606000608405) as Verified eligible", () => {
+    const result = determineFsaEligibility({
+      barcode: "3606000608405",
+      name: "CeraVe Acne Control Cleanser with 2% Salicylic Acid, 16 oz"
+    });
+
+    expect(result.status).toBe("Verified eligible");
+    expect(result.category).toBe("Skin & Sun Care");
+    expect(result.medicalCategory).toBe("OTC Acne Treatments");
+    expect(result.documentationRequired).toBe("Detailed receipt");
+    expect(result.activeIngredient).toBe("2% Salicylic Acid");
+    expect(result.purpose).toBe("Acne treatment");
+    expect(result.evidenceUrl).toBe("https://fsastore.com/cerave-acne-control-cleanser-16-oz./40551.html");
+  });
+
+  it("resolves CeraVe Acne Control Cleanser 16 oz via GTIN-14 padded barcode (03606000608405)", () => {
+    const result = determineFsaEligibility({
+      barcode: "03606000608405"
+    });
+
+    expect(result.status).toBe("Verified eligible");
+    expect(result.medicalCategory).toBe("OTC Acne Treatments");
+  });
+
+  it("resolves PanOxyl 10% Benzoyl Peroxide and Differin Adapalene as Verified eligible", () => {
+    const panoxyl = determineFsaEligibility({ barcode: "018754500173" });
+    expect(panoxyl.status).toBe("Verified eligible");
+    expect(panoxyl.medicalCategory).toBe("OTC Acne Treatments");
+    expect(panoxyl.activeIngredient).toBe("10% Benzoyl Peroxide");
+    expect(panoxyl.documentationRequired).toBe("Detailed receipt");
+
+    const differin = determineFsaEligibility({ barcode: "302994111006" });
+    expect(differin.status).toBe("Verified eligible");
+    expect(differin.medicalCategory).toBe("OTC Acne Treatments");
+    expect(differin.activeIngredient).toBe("0.1% Adapalene");
+    expect(differin.documentationRequired).toBe("Detailed receipt");
+  });
+
+  it("classifies unlisted generic salicylic acid acne cleanser as Likely eligible with Detailed receipt", () => {
+    const result = determineFsaEligibility({
+      barcode: "987654321099", // Unregistered UPC
+      name: "Store Brand Medicated Acne Cleanser with 2% Salicylic Acid",
+      category: "Skin & Sun Care"
+    });
+
+    expect(result.status).toBe("Likely eligible — verify");
+    expect(result.category).toBe("Skin & Sun Care");
+    expect(result.medicalCategory).toBe("OTC Acne Treatments");
+    expect(result.activeIngredient).toBe("2% Salicylic Acid");
+    expect(result.documentationRequired).toBe("Detailed receipt");
+    expect(result.purpose).toBe("Acne treatment");
+  });
+
+  it("classifies unlisted generic benzoyl peroxide wash as Likely eligible with Detailed receipt", () => {
+    const result = determineFsaEligibility({
+      barcode: "987654321088",
+      name: "Acne Foaming Wash 10% Benzoyl Peroxide Antimicrobial Cleanser"
+    });
+
+    expect(result.status).toBe("Likely eligible — verify");
+    expect(result.medicalCategory).toBe("OTC Acne Treatments");
+    expect(result.activeIngredient).toBe("10% Benzoyl Peroxide");
+    expect(result.documentationRequired).toBe("Detailed receipt");
+  });
+
+  it("strictly classifies ordinary cosmetic cleanser (CeraVe Hydrating Facial Cleanser) as Not eligible", () => {
+    const result = determineFsaEligibility({
+      barcode: "3606000537446",
+      name: "CeraVe Hydrating Facial Cleanser for Normal to Dry Skin, 16 oz"
+    });
+
+    expect(result.status).toBe("Not eligible");
+    expect(result.medicalCategory).toBe("Cosmetic Skincare");
+    expect(result.explanation).toContain("IRS Section 213(d)");
+  });
+
+  it("classifies unlisted cosmetic face washes and anti-aging creams as Not eligible", () => {
+    const cosmetic = determineFsaEligibility({
+      barcode: "999888777666",
+      name: "Gentle Hydrating Cleanser Daily Face Wash"
+    });
+
+    expect(cosmetic.status).toBe("Not eligible");
+    expect(cosmetic.medicalCategory).toBe("Cosmetic Skincare");
+    expect(cosmetic.explanation).toContain("Non-medicated cosmetic cleansers");
+  });
+
+  it("provides Tier 4 explicit missing-information diagnosis for ambiguous skincare products", () => {
+    const result = determineFsaEligibility({
+      barcode: "999111222333",
+      name: "CeraVe Cleanser" // Ambiguous: no active ingredient specified
+    });
+
+    expect(result.status).toBe("Unable to verify");
+    expect(result.explanation).toContain("Missing active drug ingredient or NDC record");
+    expect(result.explanation).toContain("detailed receipt or drug facts label is required");
+    expect(result.documentationRequired).toBe("Detailed receipt");
+  });
+});
+
 describe("Product Lookup Service & Local Caching", () => {
   beforeEach(() => {
     ProductLookupService.clearCache();
@@ -187,6 +324,21 @@ describe("Product Lookup Service & Local Caching", () => {
     const result = await ProductLookupService.lookupByBarcode("999999000001");
     // Should be null, never a fabricated fake product
     expect(result).toBeNull();
+  });
+
+  it("retrieves CeraVe Acne Control Cleanser seamlessly across EAN-13 and GTIN-14 formats", async () => {
+    const eanResult = await ProductLookupService.lookupByBarcode("3606000577138");
+    expect(eanResult).not.toBeNull();
+    expect(eanResult?.name).toContain("CeraVe Acne Control Cleanser");
+    expect(eanResult?.brand).toBe("CeraVe");
+
+    const gtinResult = await ProductLookupService.lookupByBarcode("03606000577138");
+    expect(gtinResult).not.toBeNull();
+    expect(gtinResult?.name).toContain("CeraVe Acne Control Cleanser");
+
+    const size16Result = await ProductLookupService.lookupByBarcode("3606000608405");
+    expect(size16Result).not.toBeNull();
+    expect(size16Result?.name).toContain("16 oz");
   });
 });
 
@@ -247,5 +399,19 @@ describe("Scan History Service & Local Storage", () => {
 
     ScanHistoryService.clearHistory();
     expect(ScanHistoryService.getHistory().length).toBe(0);
+  });
+
+  it("supports user flagging of incorrect results with custom evidence notes", () => {
+    const product = buildScannedProduct({
+      barcode: "3606000577138",
+      name: "CeraVe Acne Control Cleanser"
+    });
+
+    ScanHistoryService.addToHistory(product);
+    ScanHistoryService.flagResult(product.id, "FSA Store verified link: https://fsastore.com/cerave-acne-control-cleanser-8-oz./32415.html");
+
+    const history = ScanHistoryService.getHistory();
+    expect(history[0].flaggedIncorrect).toBe(true);
+    expect(history[0].userEvidenceNote).toContain("fsastore.com");
   });
 });

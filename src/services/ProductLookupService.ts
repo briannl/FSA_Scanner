@@ -1,5 +1,5 @@
 import { ProductLookupResult } from "../types/scanner";
-import { normalizeBarcode } from "../utils/barcodeUtils";
+import { normalizeBarcode, getBarcodeVariants } from "../utils/barcodeUtils";
 import { CURATED_BARCODE_DATABASE } from "../data/barcodeCatalog";
 import { SEED_PRODUCTS } from "../data/seedData";
 import { ProductObservation } from "../types/product";
@@ -65,31 +65,37 @@ class ProductLookupServiceImpl {
     const barcode = normalizeBarcode(rawBarcode);
     if (!barcode) return null;
 
+    const variants = getBarcodeVariants(rawBarcode);
+
     // 1. Memory / LocalStorage Cache
-    if (this.memoryCache.has(barcode)) {
-      const cached = this.memoryCache.get(barcode)!;
-      return { ...cached, source: "cache" };
+    for (const v of variants) {
+      if (this.memoryCache.has(v)) {
+        const cached = this.memoryCache.get(v)!;
+        return { ...cached, source: "cache" };
+      }
     }
 
     // 2. Curated Barcode Registry
-    if (CURATED_BARCODE_DATABASE[barcode]) {
-      const curated = CURATED_BARCODE_DATABASE[barcode];
-      const result: ProductLookupResult = {
-        barcode,
-        name: curated.name,
-        brand: curated.brand,
-        category: curated.category,
-        imageUrl: curated.imageUrl,
-        source: "local_catalog"
-      };
-      this.persistCache(barcode, result);
-      return result;
+    for (const v of variants) {
+      if (CURATED_BARCODE_DATABASE[v]) {
+        const curated = CURATED_BARCODE_DATABASE[v];
+        const result: ProductLookupResult = {
+          barcode,
+          name: curated.name,
+          brand: curated.brand,
+          category: curated.category,
+          imageUrl: curated.imageUrl,
+          source: "local_catalog"
+        };
+        this.persistCache(barcode, result);
+        return result;
+      }
     }
 
     // 3. Existing FSA Tracker Deals Catalog (Seed & live products)
     const catalog = additionalDealsCatalog || SEED_PRODUCTS;
     const matchingDeal = catalog.find(
-      (p) => p.upc && normalizeBarcode(p.upc) === barcode
+      (p) => p.upc && variants.includes(normalizeBarcode(p.upc))
     );
     if (matchingDeal) {
       const result: ProductLookupResult = {

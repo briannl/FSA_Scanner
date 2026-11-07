@@ -56,3 +56,42 @@ export function verifyModulo10CheckDigit(barcode: string): boolean {
   const calculatedCheck = remainder === 0 ? 0 : 10 - remainder;
   return calculatedCheck === checkDigit;
 }
+
+/**
+ * Returns all normalized representations of a barcode to guarantee
+ * seamless cross-matching across UPC-A (12-digit), EAN-13 (13-digit),
+ * and GTIN-14 (14-digit) without losing leading zeros.
+ */
+export function getBarcodeVariants(raw: string): string[] {
+  const normalized = normalizeBarcode(raw);
+  if (!normalized) return [];
+
+  const variants = new Set<string>();
+  variants.add(normalized);
+
+  // Pad to standard GTIN-14 (14 digits) and EAN-13 (13 digits) if numeric
+  if (/^\d+$/.test(normalized)) {
+    if (normalized.length <= 13) {
+      variants.add(normalized.padStart(14, "0"));
+    }
+    if (normalized.length <= 12) {
+      variants.add(normalized.padStart(13, "0"));
+    }
+
+    // Strip leading zeros if present
+    if (normalized.startsWith("0")) {
+      const strippedOnce = normalized.slice(1);
+      if (strippedOnce.length >= 8) {
+        variants.add(strippedOnce);
+      }
+      if (normalized.startsWith("00")) {
+        const strippedTwice = normalized.slice(2);
+        if (strippedTwice.length >= 8) {
+          variants.add(strippedTwice);
+        }
+      }
+    }
+  }
+
+  return Array.from(variants);
+}
