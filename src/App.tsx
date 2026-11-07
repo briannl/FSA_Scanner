@@ -135,10 +135,22 @@ export const App: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  // Ensure camera scanner is completely closed whenever user leaves the Scan tab
+  useEffect(() => {
+    if (activeTab !== "scan") {
+      setIsScannerOpen(false);
+      setIsManualBarcodeOpen(false);
+    }
+  }, [activeTab]);
+
   // Handle scanned or entered barcode
   const handleBarcodeDetected = async (rawBarcode: string) => {
     const barcode = normalizeBarcode(rawBarcode);
     if (!barcode) return;
+
+    // Immediately dismiss scanner and tear down camera pipeline before async product lookup
+    setIsScannerOpen(false);
+    setIsManualBarcodeOpen(false);
 
     // 1. Perform modular product lookup
     const lookupResult = await ProductLookupService.lookupByBarcode(barcode, products);
@@ -159,13 +171,9 @@ export const App: React.FC = () => {
       ScanHistoryService.addToHistory(scanned);
 
       // Show result
-      setIsScannerOpen(false);
-      setIsManualBarcodeOpen(false);
       setScannedProductResult(scanned);
     } else {
       // Product not found: allow user to identify product without fabricating
-      setIsScannerOpen(false);
-      setIsManualBarcodeOpen(false);
       setUnidentifiedBarcode(barcode);
     }
   };

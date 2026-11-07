@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { BrowserMultiFormatReader } from "@zxing/browser";
 import { X, Camera, RefreshCw, Upload, AlertCircle, HelpCircle } from "lucide-react";
 import { normalizeBarcode } from "../utils/barcodeUtils";
+import { CameraLifecycleManager, ScannerLifecycleState } from "../services/CameraLifecycleManager";
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
@@ -17,17 +18,19 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   onManualEntry
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const managerRef = useRef<CameraLifecycleManager | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  if (!managerRef.current) {
+    managerRef.current = new CameraLifecycleManager();
+  }
+
+  const [lifecycleState, setLifecycleState] = useState<ScannerLifecycleState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [isDecodingFile, setIsDecodingFile] = useState(false);
 
   // Play audio feedback tone on successful scan
-  const playScanBeep = () => {
+  const playScanBeep = useCallback(() => {
     try {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtx) return;
@@ -45,92 +48,76 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     } catch {
       // Audio autoplay policy or not supported
     }
-  };
+  }, []);
 
-  const stopCamera = useCallback(() => {
-    if (readerRef.current) {
-      try {
-        // Reset controls
-        readerRef.current = null;
-      } catch {
-        // Ignore
-      }
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
+  // Safe Close Handler
+  const handleClose = useCallback(() => {
+    managerRef.current?.stop();
+    onClose();
+  }, [onClose]);
+
+  // Safe Manual Entry Transition
+  const handleGoToManual = useCallback(() => {
+    managerRef.current?.stop();
+    onManualEntry();
+  }, [onManualEntry]);
+
+  // Restart camera session
+  const handleRetryCamera = useCallback(() => {
+    if (videoRef.current && managerRef.current) {
+      setErrorMessage(null);
+      managerRef.current.start(videoRef.current);
     }
   }, []);
 
-  const startCamera = useCallback(async () => {
-    stopCamera();
-    setErrorMessage(null);
-    setHasPermission(null);
-    setIsProcessing(false);
-
-    try {
-      const constraints: MediaStreamConstraints = {
-        audio: false,
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
-
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      setHasPermission(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute("playsinline", "true");
-        await videoRef.current.play();
-
-        const reader = new BrowserMultiFormatReader();
-        readerRef.current = reader;
-
-        // Start continuous decoding
-        reader.decodeFromVideoElement(videoRef.current, (result) => {
-          if (result && !isProcessing) {
-            const rawText = result.getText();
-            const normalized = normalizeBarcode(rawText);
-            if (normalized && normalized.length >= 6) {
-              setIsProcessing(true);
-              playScanBeep();
-              stopCamera();
-              onBarcodeDetected(normalized);
-            }
-          }
-        });
-      }
-    } catch (err) {
-      console.warn("Camera start error:", err);
-      setHasPermission(false);
-      const error = err as Error;
-      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        setErrorMessage("Camera access was denied. Please allow camera permissions in your browser settings to scan in-store.");
-      } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
-        setErrorMessage("No video camera was detected on this device. You can enter the barcode manually or upload a photo.");
-      } else {
-        setErrorMessage("Could not connect to camera. Please try again, upload a barcode photo, or enter digits manually.");
-      }
-    }
-  }, [stopCamera, isProcessing, onBarcodeDetected]);
-
+  // Set up lifecycle listeners and handle modal open/close & iOS page events
   useEffect(() => {
+    const manager = managerRef.current!;
+
+    manager.setListeners({
+      onStateChange: (state) => {
+        setLifecycleState(state);
+      },
+      onError: (msg) => {
+        setErrorMessage(msg);
+      },
+      onBarcodeDetected: (barcode) => {
+        playScanBeep();
+        onBarcodeDetected(barcode);
+      }
+    });
+
     if (isOpen) {
-      startCamera();
+      setErrorMessage(null);
+      if (videoRef.current) {
+        manager.start(videoRef.current);
+      }
     } else {
-      stopCamera();
+      manager.stop();
     }
-    return () => {
-      stopCamera();
+
+    // iOS Safari / Standalone PWA Backgrounding & Pagehide Lifecycle
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        manager.stop();
+        onClose();
+      }
     };
-  }, [isOpen, startCamera, stopCamera]);
+
+    const handlePageHide = () => {
+      manager.stop();
+      onClose();
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      manager.stop();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("pagehide", handlePageHide);
+    };
+  }, [isOpen, onClose, onBarcodeDetected, playScanBeep]);
 
   // Handle barcode image file upload fallback
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,7 +143,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             const normalized = normalizeBarcode(result.getText());
             if (normalized) {
               playScanBeep();
-              stopCamera();
+              managerRef.current?.stop();
               onBarcodeDetected(normalized);
               return;
             }
@@ -185,7 +172,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   return (
     <div className="scanner-modal-backdrop" role="dialog" aria-modal="true" aria-label="Barcode Scanner">
       <div className="scanner-modal-content">
-        {/* Top bar */}
+        {/* Top bar with Safe Area Insets & High-Contrast 44x44px Close Button */}
         <div className="scanner-modal-header">
           <div className="scanner-header-title">
             <Camera size={18} className="text-lavender" />
@@ -194,10 +181,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           <button
             type="button"
             className="scanner-close-btn"
-            onClick={() => {
-              stopCamera();
-              onClose();
-            }}
+            onClick={handleClose}
             aria-label="Close scanner"
           >
             <X size={20} />
@@ -206,8 +190,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
         {/* Video Viewfinder */}
         <div className="scanner-viewfinder-wrapper">
-          {hasPermission === false ? (
-            /* Permission Denied Recovery Instructions */
+          {lifecycleState === "error" ? (
+            /* Permission Denied / Error Recovery Instructions */
             <div className="scanner-permission-denied">
               <AlertCircle size={44} className="text-warning mb-3" />
               <h3>Camera Permission Needed</h3>
@@ -215,7 +199,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
               <div className="scanner-instructions-card">
                 <div className="instruction-step">
-                  <strong>iOS Safari:</strong> Tap the <em>aA</em> icon in the URL bar &gt; <em>Website Settings</em> &gt; <em>Camera</em> &gt; <em>Allow</em>.
+                  <strong>iOS Safari / PWA:</strong> Tap the <em>aA</em> icon in the URL bar &gt; <em>Website Settings</em> &gt; <em>Camera</em> &gt; <em>Allow</em>.
                 </div>
                 <div className="instruction-step">
                   <strong>Android Chrome:</strong> Tap the lock icon in the URL bar &gt; <em>Permissions</em> &gt; <em>Camera</em> &gt; <em>Allow</em>.
@@ -226,17 +210,14 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                 <button
                   type="button"
                   className="editorial-primary-btn"
-                  onClick={startCamera}
+                  onClick={handleRetryCamera}
                 >
                   <RefreshCw size={16} /> Try Camera Again
                 </button>
                 <button
                   type="button"
                   className="editorial-secondary-btn"
-                  onClick={() => {
-                    stopCamera();
-                    onManualEntry();
-                  }}
+                  onClick={handleGoToManual}
                 >
                   Enter Barcode Manually
                 </button>
@@ -269,10 +250,16 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   <span className="reticle-corner bottom-right" />
 
                   {/* Animated Sweeping Laser Line */}
-                  <div className="scanner-laser-line" />
+                  {lifecycleState === "scanning" && (
+                    <div className="scanner-laser-line" />
+                  )}
                 </div>
                 <p className="scanner-target-tip">
-                  {isProcessing ? "Recognizing barcode..." : "Align barcode within the frame"}
+                  {lifecycleState === "starting"
+                    ? "Starting camera..."
+                    : lifecycleState === "stopping"
+                    ? "Stopping camera..."
+                    : "Align barcode within the frame"}
                 </p>
               </div>
             </>
@@ -291,10 +278,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
           <button
             type="button"
             className="scanner-footer-action-btn"
-            onClick={() => {
-              stopCamera();
-              onManualEntry();
-            }}
+            onClick={handleGoToManual}
           >
             <HelpCircle size={16} />
             <span>Enter manually</span>
