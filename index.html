@@ -11,6 +11,31 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <!-- Immediate cache-buster & Service Worker unregister script -->
+    <script>
+      (function() {
+        var APP_DEPLOY_VERSION = "2.3.0-clean-reload";
+        try {
+          if (localStorage.getItem("fsa_bundle_version") !== APP_DEPLOY_VERSION) {
+            localStorage.setItem("fsa_bundle_version", APP_DEPLOY_VERSION);
+            if ("caches" in window) {
+              caches.keys().then(function(names) {
+                names.forEach(function(name) {
+                  caches.delete(name);
+                });
+              });
+            }
+            if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                regs.forEach(function(reg) {
+                  reg.unregister();
+                });
+              });
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
     <!-- Immediate theme application to prevent light-mode flash -->
     <script>
       (function() {
