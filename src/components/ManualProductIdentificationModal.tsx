@@ -1,7 +1,9 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { X, HelpCircle, Camera, Check } from "lucide-react";
 import { FSAFEDS_CATEGORIES, FsafedsCategory } from "../types/fsafeds";
 import { EvaluationInput } from "../services/FSAEligibilityEngine";
+import { CURATED_BARCODE_DATABASE } from "../data/barcodeCatalog";
+import { getBarcodeVariants } from "../utils/barcodeUtils";
 
 interface ManualProductIdentificationModalProps {
   isOpen: boolean;
@@ -26,6 +28,24 @@ export const ManualProductIdentificationModal: React.FC<ManualProductIdentificat
   const [error, setError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Prepopulate if barcode matches a known catalog entry
+  useEffect(() => {
+    if (!barcode) return;
+    const variants = getBarcodeVariants(barcode);
+    for (const v of variants) {
+      if (CURATED_BARCODE_DATABASE[v]) {
+        const entry = CURATED_BARCODE_DATABASE[v];
+        setProductName(entry.name);
+        setBrand(entry.brand);
+        setCategory(entry.category);
+        if (entry.activeIngredient) {
+          setIngredientsText(entry.activeIngredient);
+        }
+        break;
+      }
+    }
+  }, [barcode]);
 
   if (!isOpen) return null;
 

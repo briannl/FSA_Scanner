@@ -10,6 +10,7 @@ import {
   determineFsaEligibility,
   buildScannedProduct
 } from "../src/services/FSAEligibilityEngine";
+import { CURATED_BARCODE_DATABASE } from "../src/data/barcodeCatalog";
 import { ProductLookupService } from "../src/services/ProductLookupService";
 import { ScanHistoryService } from "../src/services/ScanHistoryService";
 
@@ -413,5 +414,35 @@ describe("Scan History Service & Local Storage", () => {
     const history = ScanHistoryService.getHistory();
     expect(history[0].flaggedIncorrect).toBe(true);
     expect(history[0].userEvidenceNote).toContain("fsastore.com");
+  });
+
+  it("fail-safe direct resolution instantly identifies CeraVe 16 oz without manual identification fallback", () => {
+    const rawBarcode = "3606000608405";
+    const variants = getBarcodeVariants(rawBarcode);
+    let curatedEntry = null;
+    for (const v of variants) {
+      if (CURATED_BARCODE_DATABASE[v]) {
+        curatedEntry = CURATED_BARCODE_DATABASE[v];
+        break;
+      }
+    }
+
+    expect(curatedEntry).not.toBeNull();
+    expect(curatedEntry?.name).toBe("CeraVe Acne Control Cleanser with 2% Salicylic Acid, 16 oz");
+    expect(curatedEntry?.brand).toBe("CeraVe");
+    expect(curatedEntry?.category).toBe("Skin & Sun Care");
+
+    const scanned = buildScannedProduct({
+      barcode: rawBarcode,
+      name: curatedEntry!.name,
+      brand: curatedEntry!.brand,
+      category: curatedEntry!.category,
+      imageUrl: curatedEntry!.imageUrl
+    });
+
+    expect(scanned.eligibilityStatus).toBe("Verified eligible");
+    expect(scanned.medicalCategory).toBe("OTC Acne Treatments");
+    expect(scanned.documentationRequired).toBe("Detailed receipt");
+    expect(scanned.activeIngredient).toBe("2% Salicylic Acid");
   });
 });

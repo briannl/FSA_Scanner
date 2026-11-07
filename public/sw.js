@@ -1,5 +1,5 @@
-// Service Worker for FSA Tracker In-Store Scanner PWA
-const CACHE_NAME = "fsa-scanner-shell-v1";
+// Service Worker for FSA Scanner In-Store PWA
+const CACHE_NAME = "fsa-scanner-shell-v2";
 const ASSETS_TO_CACHE = [
   "/",
   "/index.html",
@@ -15,6 +15,7 @@ self.addEventListener("install", (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  // Activate updated worker immediately without waiting for existing tabs to close
   self.skipWaiting();
 });
 
@@ -24,20 +25,25 @@ self.addEventListener("activate", (event) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log("[Service Worker] Purging outdated cache:", key);
             return caches.delete(key);
           }
         })
       );
     })
   );
-  self.clients.claim();
+  // Claim all active clients immediately so updates take effect right away
+  return self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
 
-  // For API calls: Network-first, fallback to cache
+  // Ignore non-http/https schemes
+  if (!url.protocol.startsWith("http")) return;
+
+  // 1. API calls: Network-first, fallback to cache
   if (url.pathname.startsWith("/api/")) {
     event.respondWith(
       fetch(request)
@@ -48,37 +54,58 @@ self.addEventListener("fetch", (event) => {
           }
           return response;
         })
-        .catch(() => {
-          return caches.match(request);
-        })
+        .catch(() => caches.match(request))
     );
     return;
   }
 
-  // For static shell assets: Cache-first, fallback to network
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
+  // 2. CRITICAL FIX: Navigation & HTML requests: ALWAYS NETWORK-FIRST
+  // This guarantees that opening the app or refreshing always gets the latest index.html
+  // pointing to the latest versioned JS bundles containing updated product catalogs.
+  // Falls back to cached index.html only when strictly offline.
+  if (
+    request.mode === "navigate" ||
+    request.destination === "document" ||
+    url.pathname === "/" ||
+    url.pathname === "/index.html"
+  ) {
+    event.respondWith(
+      fetch(request)
         .then((networkResponse) => {
-          if (
-            networkResponse &&
-            networkResponse.status === 200 &&
-            (request.destination === "style" ||
-              request.destination === "script" ||
-              request.destination === "image" ||
-              request.destination === "font")
-          ) {
+          if (networkResponse && networkResponse.status === 200) {
             const clone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }
           return networkResponse;
         })
         .catch(() => {
-          if (request.mode === "navigate") {
-            return caches.match("/index.html");
-          }
-        });
+          return caches.match("/index.html").then((cached) => {
+            if (cached) return cached;
+            return caches.match("/");
+          });
+        })
+    );
+    return;
+  }
+
+  // 3. Static assets with immutable Vite hashes (js, css, images, fonts): Cache-first, fallback to network
+  event.respondWith(
+    caches.match(request).then((cached) => {
+      if (cached) return cached;
+      return fetch(request).then((networkResponse) => {
+        if (
+          networkResponse &&
+          networkResponse.status === 200 &&
+          (request.destination === "style" ||
+            request.destination === "script" ||
+            request.destination === "image" ||
+            request.destination === "font")
+        ) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return networkResponse;
+      });
     })
   );
 });

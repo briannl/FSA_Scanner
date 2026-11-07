@@ -95,6 +95,37 @@ export const SettingsSheet: React.FC<SettingsSheetProps> = ({
           </button>
         </div>
 
+        {/* Force Update & Bust PWA Cache */}
+        <div className="filter-toggle-row">
+          <div>
+            <span className="filter-toggle-title">Update App & Catalog</span>
+            <span className="filter-toggle-desc">
+              Purge cached assets and reload the latest barcode catalog
+            </span>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary font-sans"
+            onClick={async () => {
+              if (typeof window !== "undefined") {
+                if ("caches" in window) {
+                  const keys = await window.caches.keys();
+                  await Promise.all(keys.map((k) => window.caches.delete(k)));
+                }
+                if ("serviceWorker" in navigator) {
+                  const regs = await navigator.serviceWorker.getRegistrations();
+                  await Promise.all(regs.map((r) => r.unregister()));
+                }
+                window.location.reload();
+              }
+            }}
+            style={{ borderRadius: "var(--radius-pill)", padding: "0.45rem 1rem", fontSize: "0.8rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+          >
+            <RefreshCw size={14} />
+            <span>Reload App</span>
+          </button>
+        </div>
+
         {/* Export Data */}
         <div className="filter-toggle-row">
           <div>

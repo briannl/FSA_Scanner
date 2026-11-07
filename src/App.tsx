@@ -28,10 +28,12 @@ import { ScannedProduct } from "./types/scanner";
 import { ProductLookupService } from "./services/ProductLookupService";
 import {
   buildScannedProduct,
+  determineFsaEligibility,
   EvaluationInput
 } from "./services/FSAEligibilityEngine";
+import { CURATED_BARCODE_DATABASE } from "./data/barcodeCatalog";
 import { ScanHistoryService } from "./services/ScanHistoryService";
-import { normalizeBarcode } from "./utils/barcodeUtils";
+import { normalizeBarcode, getBarcodeVariants } from "./utils/barcodeUtils";
 import { WifiOff } from "lucide-react";
 
 export const App: React.FC = () => {
@@ -152,7 +154,35 @@ export const App: React.FC = () => {
     setIsScannerOpen(false);
     setIsManualBarcodeOpen(false);
 
-    // 1. Perform modular product lookup
+    // 1. Direct Curated Barcode Registry Check (Instant, 0ms, zero risk of network/API failure)
+    const variants = getBarcodeVariants(barcode);
+    let curatedEntry = null;
+    for (const v of variants) {
+      if (CURATED_BARCODE_DATABASE[v]) {
+        curatedEntry = CURATED_BARCODE_DATABASE[v];
+        break;
+      }
+    }
+
+    if (curatedEntry) {
+      const scanned = buildScannedProduct({
+        barcode,
+        name: curatedEntry.name,
+        brand: curatedEntry.brand,
+        category: curatedEntry.category,
+        medicalCategory: curatedEntry.medicalCategory,
+        activeIngredient: curatedEntry.activeIngredient,
+        purpose: curatedEntry.purpose,
+        imageUrl: curatedEntry.imageUrl,
+        matchingDealsCatalog: products
+      });
+
+      ScanHistoryService.addToHistory(scanned);
+      setScannedProductResult(scanned);
+      return;
+    }
+
+    // 2. Perform modular product lookup (Cache -> Deals Catalog -> Open Facts -> UPCitemdb)
     const lookupResult = await ProductLookupService.lookupByBarcode(barcode, products);
 
     if (lookupResult) {
@@ -173,6 +203,23 @@ export const App: React.FC = () => {
       // Show result
       setScannedProductResult(scanned);
     } else {
+      // 3. Fallback: Check if determineFsaEligibility can evaluate it (e.g. seed catalog or rules)
+      const directCheck = determineFsaEligibility({ barcode, matchingDealsCatalog: products });
+      if (
+        directCheck.status === "Verified eligible" ||
+        directCheck.status === "Not eligible" ||
+        directCheck.status === "Requires documentation"
+      ) {
+        const scanned = buildScannedProduct({
+          barcode,
+          name: directCheck.medicalCategory || `Product (${barcode})`,
+          matchingDealsCatalog: products
+        });
+        ScanHistoryService.addToHistory(scanned);
+        setScannedProductResult(scanned);
+        return;
+      }
+
       // Product not found: allow user to identify product without fabricating
       setUnidentifiedBarcode(barcode);
     }
